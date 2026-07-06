@@ -46,3 +46,9 @@ type OTP struct {
 	IsDeleted  bool       `json:"is_deleted"`
 	DeletedAt  *time.Time `json:"deleted_at"`
 }
+
+// UpdateProfileRequest describes the incoming data for a partial profile update.
+type UpdateProfileRequest struct {
+	FullName *string `json:"full_name" binding:"omitempty,max=100"`
+	Phone    *string `json:"phone" binding:"omitempty,max=20"`
+}

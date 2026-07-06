@@ -35,7 +35,8 @@ type IRepository interface {
 	GetUserByOAuthInfo(ctx context.Context, oauthUserID, oauthProviderName string) (*models.User, error)
 	// UpdateUserOAuthInfoByEmail updates user's oauth provider name and oauth user id by email from info
 	UpdateUserOAuthInfoByEmail(ctx context.Context, info models.OAuthUserInfo) (*models.User, error)
-
+	// UpdateProfile updates the full_name and phone fields of a user if provided.
+	UpdateProfile(ctx context.Context, id int, req models.UpdateProfileRequest) error
 	// SaveOTP persists a new OTP record to the database.
 	SaveOTP(ctx context.Context, o *models.OTP) (int, error)
 	// GetOTP retrieves the latest active, unverified OTP for the given receiver.

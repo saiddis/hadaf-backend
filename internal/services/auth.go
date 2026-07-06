@@ -549,3 +549,4 @@ func (s *Service) CreateUser(ctx context.Context, user *models.User) error {
 func (s *Service) UpdateUserOAuthInfoByEmail(ctx context.Context, info models.OAuthUserInfo) (*models.User, error) {
 	return s.repo.UpdateUserOAuthInfoByEmail(ctx, info)
 }
+
