@@ -48,22 +48,22 @@ type dbOtp struct {
 INSTITUTIONS
 */
 type dbInstitution struct {
-	ID            int        `db:"id"`
-	Name          string     `db:"name"`
-	Type          *string    `db:"type"`
-	City          *string    `db:"city"`
-	Region        *string    `db:"region"`
-	Address       *string    `db:"address"`
-	Phone         *string    `db:"phone"`
-	Email         *string    `db:"email"`
-	Description   *string    `db:"description"`
-	ActivityHours *string    `db:"activity_hours"`
-	Latitude      *float64   `db:"latitude"`
-	Longitude     *float64   `db:"longitude"`
-	CreatedAt     time.Time  `db:"created_at"`
-	UpdatedAt     *time.Time `db:"updated_at"`
-	IsDeleted     bool       `db:"is_deleted"`
-	DeletedAt     *time.Time `db:"deleted_at"`
+	ID               int        `db:"id"`
+	Name             string     `db:"name"`
+	Type             *string    `db:"type"`
+	City             *string    `db:"city"`
+	Region           *string    `db:"region"`
+	Address          *string    `db:"address"`
+	Phone            *string    `db:"phone"`
+	Email            *string    `db:"email"`
+	Description      *string    `db:"description"`
+	ActivityHours    *string    `db:"activity_hours"`
+	Latitude         *float64   `db:"latitude"`
+	Longitude        *float64   `db:"longitude"`
+	CreatedAt        time.Time  `db:"created_at"`
+	UpdatedAt        *time.Time `db:"updated_at"`
+	IsDeleted        bool       `db:"is_deleted"`
+	DeletedAt        *time.Time `db:"deleted_at"`
 	WardsCount       int        `db:"wards_count"`
 	ProhibitedItems  *string    `db:"prohibited_items"`
 	RecommendedItems *string    `db:"recommended_items"`

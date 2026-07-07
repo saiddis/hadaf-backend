@@ -9,17 +9,17 @@ import (
 )
 
 type NeedsFilter struct {
-	CategoryID  *int       `form:"category_id"`
-	Name        string     `form:"name"`
-	Unit        string     `form:"unit"`
-	RequiredQty float64    `form:"required_qty"`
-	ReceivedQty float64    `form:"received_qty"`
-	Urgency     string     `form:"urgency"`
+	CategoryID    *int       `form:"category_id"`
+	Name          string     `form:"name"`
+	Unit          string     `form:"unit"`
+	RequiredQty   float64    `form:"required_qty"`
+	ReceivedQty   float64    `form:"received_qty"`
+	Urgency       string     `form:"urgency"`
 	IsDone        *bool      `form:"is_done"`
 	CreatedAtFrom *time.Time `form:"created_at_from" time_format:"2006-01-02"`
 	CreatedAtTo   *time.Time `form:"created_at_to" time_format:"2006-01-02"`
-	IsDeleted   bool       `form:"is_deleted"`
-	OrderBy     string     `form:"order_by"`
+	IsDeleted     bool       `form:"is_deleted"`
+	OrderBy       string     `form:"order_by"`
 }
 
 func GetNeedsByInstitution(filter NeedsFilter, instituteId int) (string, []interface{}) {
@@ -95,14 +95,12 @@ func GetNeedsByInstitution(filter NeedsFilter, instituteId int) (string, []inter
 		idx++
 	}
 
-	
-
 	// ORDER BY is strictly whitelisted.
 	switch filter.OrderBy {
 	case "date_asc":
 		filterQuery += " ORDER BY n.created_at ASC"
 	case "urgency":
-		filterQuery += " ORDER BY n.urgency DESC, n.created_at DESC" 
+		filterQuery += " ORDER BY n.urgency DESC, n.created_at DESC"
 	default:
 		filterQuery += " ORDER BY n.created_at DESC"
 	}

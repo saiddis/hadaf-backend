@@ -75,7 +75,6 @@ func (r *Repository) GetActiveBookingByUserAndNeed(ctx context.Context, userID, 
 	return b.ToDomain(), nil
 }
 
-
 func (r *Repository) GetBookingsByNeed(ctx context.Context, needID int) ([]*models.Booking, error) {
 	query := `
 		SELECT id, user_id, need_id, quantity, note, status, created_at, updated_at, is_deleted, deleted_at
@@ -138,10 +137,10 @@ func (r *Repository) GetBookingsByUser(ctx context.Context, userID int) ([]*mode
 		mb.NeedName = needName
 		mb.InstitutionName = instName
 		mb.InstitutionID = instID
-		
+
 		// Map the note field directly to PlannedDate if it exists, since the frontend uses note for planned_date
 		mb.Note = b.Note
-		
+
 		bookings = append(bookings, mb)
 	}
 	if err := rows.Err(); err != nil {

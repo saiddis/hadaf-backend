@@ -97,7 +97,7 @@ func (r *Repository) GetNeedsByInstitution(ctx context.Context, filter filters.N
 	}
 	defer rows.Close()
 
-	// IMPORTANT: Initialize as empty slice, not nil. 
+	// IMPORTANT: Initialize as empty slice, not nil.
 	// This ensures it serializes to [] in JSON instead of null.
 	needs := make([]*models.Need, 0)
 
@@ -110,7 +110,7 @@ func (r *Repository) GetNeedsByInstitution(ctx context.Context, filter filters.N
 		}
 		needs = append(needs, &n)
 	}
-	
+
 	r.logger.Info().Int("count", len(needs)).Msg("Fetched needs count")
 	return needs, nil
 }
