@@ -135,7 +135,7 @@ func NewHandler(
 // InitRoutes registers all application routes and returns the configured Gin engine.
 func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.New()
-	router.Use(h.CORSMiddleware(), gin.RecoveryWithWriter(gin.DefaultWriter), h.RequestID(), h.middleware.AlertMiddleware())
+	router.Use(h.CORSMiddleware(), gin.RecoveryWithWriter(gin.DefaultWriter), h.RequestID(), h.middleware.LoggerMiddleware(), h.middleware.AlertMiddleware())
 	router.NoRoute(h.noRoute)
 
 	router.GET("/ping", h.ping)

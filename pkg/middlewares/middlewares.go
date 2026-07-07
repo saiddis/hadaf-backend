@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"shb/internal/models"
+	"shb/pkg/constants"
 	"shb/pkg/myerrors"
 	"shb/pkg/notifier"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/rs/zerolog"
 )
 
 // Middleware holds shared middleware state, such as the JWT signing secret.
@@ -223,5 +225,46 @@ func (m *Middleware) AlertMiddleware() gin.HandlerFunc {
 				}
 			}()
 		}
+	}
+}
+
+// LoggerMiddleware intercepts requests and logs structured data using zerolog,
+// pulling the request_id from the request context.
+func (m *Middleware) LoggerMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		raw := c.Request.URL.RawQuery
+
+		c.Next()
+
+		latency := time.Since(start)
+		if raw != "" {
+			path = path + "?" + raw
+		}
+
+		logger := zerolog.Ctx(c.Request.Context())
+		status := c.Writer.Status()
+
+		var event *zerolog.Event
+		if status >= 500 {
+			event = logger.Error()
+		} else if status >= 400 {
+			event = logger.Warn()
+		} else {
+			event = logger.Info()
+		}
+
+		requestID := c.Writer.Header().Get(constants.RequestIDHeader)
+		if requestID == "" {
+			requestID = c.GetHeader(constants.RequestIDHeader)
+		}
+
+		event.
+			Str("method", c.Request.Method).
+			Str("path", path).
+			Int("status", status).
+			Str("latency", latency.String()).
+			Msg("HTTP Request")
 	}
 }
