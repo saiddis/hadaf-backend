@@ -22,9 +22,9 @@ func (_m *MockLedgerRepository) EXPECT() *MockLedgerRepository_Expecter {
 	return &MockLedgerRepository_Expecter{mock: &_m.Mock}
 }
 
-// CreateLedgerEntry provides a mock function with given fields: ctx, e
-func (_m *MockLedgerRepository) CreateLedgerEntry(ctx context.Context, e *models.LedgerEntry) error {
-	ret := _m.Called(ctx, e)
+// CreateLedgerEntry provides a mock function with given fields: ctx, l
+func (_m *MockLedgerRepository) CreateLedgerEntry(ctx context.Context, l *models.LedgerEntry) error {
+	ret := _m.Called(ctx, l)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateLedgerEntry")
@@ -32,7 +32,7 @@ func (_m *MockLedgerRepository) CreateLedgerEntry(ctx context.Context, e *models
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, *models.LedgerEntry) error); ok {
-		r0 = rf(ctx, e)
+		r0 = rf(ctx, l)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -47,12 +47,12 @@ type MockLedgerRepository_CreateLedgerEntry_Call struct {
 
 // CreateLedgerEntry is a helper method to define mock.On call
 //   - ctx context.Context
-//   - e *models.LedgerEntry
-func (_e *MockLedgerRepository_Expecter) CreateLedgerEntry(ctx interface{}, e interface{}) *MockLedgerRepository_CreateLedgerEntry_Call {
-	return &MockLedgerRepository_CreateLedgerEntry_Call{Call: _e.mock.On("CreateLedgerEntry", ctx, e)}
+//   - l *models.LedgerEntry
+func (_e *MockLedgerRepository_Expecter) CreateLedgerEntry(ctx interface{}, l interface{}) *MockLedgerRepository_CreateLedgerEntry_Call {
+	return &MockLedgerRepository_CreateLedgerEntry_Call{Call: _e.mock.On("CreateLedgerEntry", ctx, l)}
 }
 
-func (_c *MockLedgerRepository_CreateLedgerEntry_Call) Run(run func(ctx context.Context, e *models.LedgerEntry)) *MockLedgerRepository_CreateLedgerEntry_Call {
+func (_c *MockLedgerRepository_CreateLedgerEntry_Call) Run(run func(ctx context.Context, l *models.LedgerEntry)) *MockLedgerRepository_CreateLedgerEntry_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(*models.LedgerEntry))
 	})
@@ -185,9 +185,9 @@ func (_c *MockLedgerRepository_GetTotalDonationsByCampaign_Call) RunAndReturn(ru
 	return _c
 }
 
-// RecordDonation provides a mock function with given fields: ctx, e
-func (_m *MockLedgerRepository) RecordDonation(ctx context.Context, e *models.LedgerEntry) error {
-	ret := _m.Called(ctx, e)
+// RecordDonation provides a mock function with given fields: ctx, l
+func (_m *MockLedgerRepository) RecordDonation(ctx context.Context, l *models.LedgerEntry) error {
+	ret := _m.Called(ctx, l)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RecordDonation")
@@ -195,7 +195,7 @@ func (_m *MockLedgerRepository) RecordDonation(ctx context.Context, e *models.Le
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, *models.LedgerEntry) error); ok {
-		r0 = rf(ctx, e)
+		r0 = rf(ctx, l)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -210,12 +210,12 @@ type MockLedgerRepository_RecordDonation_Call struct {
 
 // RecordDonation is a helper method to define mock.On call
 //   - ctx context.Context
-//   - e *models.LedgerEntry
-func (_e *MockLedgerRepository_Expecter) RecordDonation(ctx interface{}, e interface{}) *MockLedgerRepository_RecordDonation_Call {
-	return &MockLedgerRepository_RecordDonation_Call{Call: _e.mock.On("RecordDonation", ctx, e)}
+//   - l *models.LedgerEntry
+func (_e *MockLedgerRepository_Expecter) RecordDonation(ctx interface{}, l interface{}) *MockLedgerRepository_RecordDonation_Call {
+	return &MockLedgerRepository_RecordDonation_Call{Call: _e.mock.On("RecordDonation", ctx, l)}
 }
 
-func (_c *MockLedgerRepository_RecordDonation_Call) Run(run func(ctx context.Context, e *models.LedgerEntry)) *MockLedgerRepository_RecordDonation_Call {
+func (_c *MockLedgerRepository_RecordDonation_Call) Run(run func(ctx context.Context, l *models.LedgerEntry)) *MockLedgerRepository_RecordDonation_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(*models.LedgerEntry))
 	})

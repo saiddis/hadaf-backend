@@ -31,7 +31,7 @@ func testServiceConfig() *configs.ServiceConfig {
 
 type testDeps struct {
 	Repo         *repomock.MockIRepository
-	CampaignRepo *repomock.MockCompaignRepository
+	CampaignRepo *repomock.MockCampaignRepository
 	LedgerRepo   *repomock.MockLedgerRepository
 	Cache        *cachemock.MockICache
 	SMS          *smsmock.MockISmsAdapter
@@ -44,7 +44,7 @@ func newTestService(t *testing.T) (*services.Service, testDeps) {
 	t.Helper()
 	d := testDeps{
 		Repo:         repomock.NewMockIRepository(t),
-		CampaignRepo: repomock.NewMockCompaignRepository(t),
+		CampaignRepo: repomock.NewMockCampaignRepository(t),
 		LedgerRepo:   repomock.NewMockLedgerRepository(t),
 		Cache:        cachemock.NewMockICache(t),
 		SMS:          smsmock.NewMockISmsAdapter(t),

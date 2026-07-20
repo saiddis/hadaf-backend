@@ -99,7 +99,7 @@ type IRepository interface {
 	RevokeAllUserRefreshTokens(ctx context.Context, userID int) error
 }
 
-type CompaignRepository interface {
+type CampaignRepository interface {
 	CreateCampaign(ctx context.Context, c *models.MedicalCampaign) error
 	GetByID(ctx context.Context, id int) (*models.MedicalCampaign, error)
 	GetAllCampaigns(ctx context.Context, q models.CampaignListQuery) (*models.CampaignPage, error)
@@ -120,7 +120,7 @@ type Service struct {
 	cfg          *configs.ServiceConfig
 	logger       *zerolog.Logger
 	repo         IRepository
-	compaignRepo CompaignRepository
+	campaignRepo CampaignRepository
 	ledgerRepo   LedgerRepository
 	cache        cache.ICache
 	sms          sms.ISmsAdapter
@@ -134,7 +134,7 @@ func NewService(
 	cfg *configs.ServiceConfig,
 	log *zerolog.Logger,
 	repo IRepository,
-	compaignRepo CompaignRepository,
+	compaignRepo CampaignRepository,
 	ledgerRepo LedgerRepository,
 	cache cache.ICache,
 	sms sms.ISmsAdapter,
@@ -151,7 +151,7 @@ func NewService(
 		email:        email,
 		token:        token,
 		fs:           fs,
-		compaignRepo: compaignRepo,
+		campaignRepo: compaignRepo,
 		ledgerRepo:   ledgerRepo,
 	}
 }

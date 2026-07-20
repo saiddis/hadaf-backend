@@ -133,12 +133,12 @@ func TestDonateUsesAuthenticatedUser(t *testing.T) {
 	assert.Equal(t, http.StatusOK, context.Writer.Status())
 }
 
-func newCampaignRouter(t *testing.T) (*gin.Engine, *repomock.MockCompaignRepository, *repomock.MockLedgerRepository) {
+func newCampaignRouter(t *testing.T) (*gin.Engine, *repomock.MockCampaignRepository, *repomock.MockLedgerRepository) {
 	t.Helper()
 
 	log := zerolog.Nop()
 	repo := repomock.NewMockIRepository(t)
-	campaignRepo := repomock.NewMockCompaignRepository(t)
+	campaignRepo := repomock.NewMockCampaignRepository(t)
 	ledgerRepo := repomock.NewMockLedgerRepository(t)
 	service := services.NewService(
 		&configs.ServiceConfig{},
