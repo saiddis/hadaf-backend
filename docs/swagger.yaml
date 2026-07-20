@@ -18,6 +18,10 @@ tags:
     description: Учреждения
   - name: Events
     description: События
+  - name: Campaigns
+    description: Медицинские кампании и прозрачность пожертвований
+  - name: Donations
+    description: Пожертвования пользователя
 
 paths:
   /institutions:
@@ -164,6 +168,189 @@ paths:
               schema:
                 $ref: '#/components/schemas/NotFoundError'
 
+  /campaigns:
+    get:
+      tags:
+        - Campaigns
+      summary: Список активных кампаний
+      security: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Страница активных кампаний
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/CampaignPage'
+        '400':
+          description: Некорректные limit/offset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+
+  /campaigns/{id}:
+    get:
+      tags:
+        - Campaigns
+      summary: Детали кампании
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Детали кампании без банковских реквизитов клиники
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/PublicCampaign'
+        '400':
+          description: Некорректный id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '404':
+          description: Кампания не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+  /campaigns/{id}/ledger:
+    get:
+      tags:
+        - Campaigns
+      summary: Финансовый ledger кампании
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Транзакции кампании
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/LedgerEntryPage'
+        '400':
+          description: Некорректный id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '404':
+          description: Кампания не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+  /campaigns/{id}/donate:
+    post:
+      tags:
+        - Donations
+      summary: Пожертвовать в кампанию
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DonationRequest'
+      responses:
+        '200':
+          description: Пожертвование записано
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/LedgerEntry'
+        '400':
+          description: Некорректная сумма или id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '401':
+          description: Требуется авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+
+  /donations/my:
+    get:
+      tags:
+        - Donations
+      summary: Мои пожертвования
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Пожертвования текущего пользователя
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/LedgerEntryPage'
+        '401':
+          description: Требуется авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+
   /ping:
     get:
       tags:
@@ -221,6 +408,117 @@ components:
         message:
           type: string
           example: "invalid request body"
+
+    PublicCampaign:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        target_amount:
+          type: number
+          format: double
+        collected_amount:
+          type: number
+          format: double
+        currency:
+          type: string
+        status:
+          type: string
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancelled_reason:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        clinic_name:
+          type: string
+          nullable: true
+
+    CampaignPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicCampaign'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    LedgerEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        campaign_id:
+          type: integer
+          nullable: true
+        type:
+          type: string
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+        description:
+          type: string
+          nullable: true
+        donor_name:
+          type: string
+          nullable: true
+        is_anonymous:
+          type: boolean
+        donor_message:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    LedgerEntryPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerEntry'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    DonationRequest:
+      type: object
+      required:
+        - amount
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
 
     NotFoundError:
       type: object

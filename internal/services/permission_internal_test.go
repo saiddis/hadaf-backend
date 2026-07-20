@@ -37,8 +37,18 @@ func Test_checkPermission(t *testing.T) {
 	ctx := context.Background()
 	repo := repomock.NewMockIRepository(t)
 	log := zerolog.Nop()
-	s := NewService(testCfg(), &log, repo, cachemock.NewMockICache(t), smsmock.NewMockISmsAdapter(t),
-		tokenmock.NewMockITokenIssuer(t), fsmock.NewMockStorage(t), emailmock.NewMockIEmailAdapter(t))
+	s := NewService(
+		testCfg(),
+		&log,
+		repo,
+		repomock.NewMockCompaignRepository(t),
+		repomock.NewMockLedgerRepository(t),
+		cachemock.NewMockICache(t),
+		smsmock.NewMockISmsAdapter(t),
+		tokenmock.NewMockITokenIssuer(t),
+		fsmock.NewMockStorage(t),
+		emailmock.NewMockIEmailAdapter(t),
+	)
 
 	t.Run("no role in context", func(t *testing.T) {
 		err := s.checkPermission(ctx, 1)

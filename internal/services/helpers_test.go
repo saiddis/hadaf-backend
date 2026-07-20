@@ -30,25 +30,40 @@ func testServiceConfig() *configs.ServiceConfig {
 }
 
 type testDeps struct {
-	Repo  *repomock.MockIRepository
-	Cache *cachemock.MockICache
-	SMS   *smsmock.MockISmsAdapter
-	Token *tokenmock.MockITokenIssuer
-	FS    *fsmock.MockStorage
-	Email *emailmock.MockIEmailAdapter
+	Repo         *repomock.MockIRepository
+	CampaignRepo *repomock.MockCompaignRepository
+	LedgerRepo   *repomock.MockLedgerRepository
+	Cache        *cachemock.MockICache
+	SMS          *smsmock.MockISmsAdapter
+	Token        *tokenmock.MockITokenIssuer
+	FS           *fsmock.MockStorage
+	Email        *emailmock.MockIEmailAdapter
 }
 
 func newTestService(t *testing.T) (*services.Service, testDeps) {
 	t.Helper()
 	d := testDeps{
-		Repo:  repomock.NewMockIRepository(t),
-		Cache: cachemock.NewMockICache(t),
-		SMS:   smsmock.NewMockISmsAdapter(t),
-		Token: tokenmock.NewMockITokenIssuer(t),
-		FS:    fsmock.NewMockStorage(t),
-		Email: emailmock.NewMockIEmailAdapter(t),
+		Repo:         repomock.NewMockIRepository(t),
+		CampaignRepo: repomock.NewMockCompaignRepository(t),
+		LedgerRepo:   repomock.NewMockLedgerRepository(t),
+		Cache:        cachemock.NewMockICache(t),
+		SMS:          smsmock.NewMockISmsAdapter(t),
+		Token:        tokenmock.NewMockITokenIssuer(t),
+		FS:           fsmock.NewMockStorage(t),
+		Email:        emailmock.NewMockIEmailAdapter(t),
 	}
 	log := zerolog.Nop()
-	svc := services.NewService(testServiceConfig(), &log, d.Repo, d.Cache, d.SMS, d.Token, d.FS, d.Email)
+	svc := services.NewService(
+		testServiceConfig(),
+		&log,
+		d.Repo,
+		d.CampaignRepo,
+		d.LedgerRepo,
+		d.Cache,
+		d.SMS,
+		d.Token,
+		d.FS,
+		d.Email,
+	)
 	return svc, d
 }

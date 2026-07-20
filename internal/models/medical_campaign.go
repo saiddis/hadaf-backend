@@ -44,8 +44,27 @@ type CampaignListQuery struct {
 }
 
 type CampaignPage struct {
-	Items  []*MedicalCampaign `json:"items"`
-	Total  int                `json:"total"`
-	Limit  int                `json:"limit"`
-	Offset int                `json:"offset"`
+	Items  []*PublicCampaign `json:"items"`
+	Total  int               `json:"total"`
+	Limit  int               `json:"limit"`
+	Offset int               `json:"offset"`
+}
+
+// PublicCampaign contains only fields safe for public campaign endpoints.
+// Internal identifiers, invoice data, moderation data, and deletion metadata
+// intentionally remain on MedicalCampaign and are not serialized here.
+type PublicCampaign struct {
+	ID              int        `json:"id"`
+	Title           string     `json:"title"`
+	Description     *string    `json:"description"`
+	TargetAmount    float64    `json:"target_amount"`
+	CollectedAmount float64    `json:"collected_amount"`
+	Currency        string     `json:"currency"`
+	Status          string     `json:"status"`
+	Deadline        *time.Time `json:"deadline"`
+	CompletedAt     *time.Time `json:"completed_at"`
+	CancelledReason *string    `json:"cancelled_reason"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       *time.Time `json:"updated_at"`
+	ClinicName      *string    `json:"clinic_name,omitempty"`
 }

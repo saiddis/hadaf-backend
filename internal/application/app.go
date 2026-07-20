@@ -5,6 +5,7 @@ package application
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -129,13 +130,33 @@ func NewApplication() *App {
 
 	repository := repositories.NewRepository(postgresConn, &log.Logger)
 
+	compaignLedgerRepository := repositories.NewCampaignLedgerRepository(postgresConn, slog.Default())
+
 	// Service uses Internal Config (ServiceConfig)
 	// We pass emailAdapter here as it was required by Service constructor
-	service := services.NewService(&cfg.Service, &log.Logger, repository, redis, sms, token, fileStorage, emailAdapter)
+	service := services.NewService(
+		&cfg.Service,
+		&log.Logger,
+		repository,
+		compaignLedgerRepository,
+		compaignLedgerRepository,
+		redis,
+		sms,
+		token,
+		fileStorage,
+		emailAdapter,
+	)
 
 	googleOAuthProvider := oauth.NewGoogleProvider(&cfg.GoogleOAuth)
 
-	handler := handlers.NewHandler(service, limiter, middleware, &log.Logger, cfg, googleOAuthProvider)
+	handler := handlers.NewHandler(
+		service,
+		limiter,
+		middleware,
+		&log.Logger,
+		cfg,
+		googleOAuthProvider,
+	)
 
 	// 5. Server (Map config)
 	readTimeout, _ := time.ParseDuration(cfg.Server.ReadTimeout)

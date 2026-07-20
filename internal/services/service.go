@@ -99,30 +99,59 @@ type IRepository interface {
 	RevokeAllUserRefreshTokens(ctx context.Context, userID int) error
 }
 
+type CompaignRepository interface {
+	CreateCampaign(ctx context.Context, c *models.MedicalCampaign) error
+	GetByID(ctx context.Context, id int) (*models.MedicalCampaign, error)
+	GetAllCampaigns(ctx context.Context, q models.CampaignListQuery) (*models.CampaignPage, error)
+	GetCampaignDetails(ctx context.Context, id int) (*models.PublicCampaign, error)
+	UpdateStatus(ctx context.Context, id int, status string) error
+}
+
+type LedgerRepository interface {
+	RecordDonation(ctx context.Context, l *models.LedgerEntry) error
+	CreateLedgerEntry(ctx context.Context, l *models.LedgerEntry) error
+	GetTotalDonationsByCampaign(ctx context.Context, campaignID int) (float64, error)
+	GetAllLedgerEntries(ctx context.Context, q models.LedgerEntryListQuery) (*models.LedgerEntryPage, error)
+}
+
 // Service is the application service layer that coordinates business logic
 // across the repository, cache, external adapters, and token provider.
 type Service struct {
-	cfg    *configs.ServiceConfig
-	logger *zerolog.Logger
-	repo   IRepository
-	cache  cache.ICache
-	sms    sms.ISmsAdapter
-	token  tokens.ITokenIssuer
-	fs     fs.Storage
-	email  email.IEmailAdapter
+	cfg          *configs.ServiceConfig
+	logger       *zerolog.Logger
+	repo         IRepository
+	compaignRepo CompaignRepository
+	ledgerRepo   LedgerRepository
+	cache        cache.ICache
+	sms          sms.ISmsAdapter
+	token        tokens.ITokenIssuer
+	fs           fs.Storage
+	email        email.IEmailAdapter
 }
 
 // NewService constructs a Service with all required dependencies injected.
-func NewService(cfg *configs.ServiceConfig, log *zerolog.Logger, repo IRepository, cache cache.ICache,
-	sms sms.ISmsAdapter, token tokens.ITokenIssuer, fs fs.Storage, email email.IEmailAdapter) *Service {
+func NewService(
+	cfg *configs.ServiceConfig,
+	log *zerolog.Logger,
+	repo IRepository,
+	compaignRepo CompaignRepository,
+	ledgerRepo LedgerRepository,
+	cache cache.ICache,
+	sms sms.ISmsAdapter,
+	token tokens.ITokenIssuer,
+	fs fs.Storage,
+	email email.IEmailAdapter,
+) *Service {
 	return &Service{
-		cfg:    cfg,
-		logger: log,
-		repo:   repo,
-		cache:  cache,
-		sms:    sms,
-		email:  email,
-		token:  token,
-		fs:     fs,
+		cfg:          cfg,
+		logger:       log,
+		repo:         repo,
+		cache:        cache,
+		sms:          sms,
+		email:        email,
+		token:        token,
+		fs:           fs,
+		compaignRepo: compaignRepo,
+		ledgerRepo:   ledgerRepo,
 	}
 }

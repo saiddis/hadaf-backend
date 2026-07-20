@@ -15,13 +15,35 @@ const (
 type LedgerEntry struct {
 	ID           int       `json:"id"`
 	CampaignID   *int      `json:"campaign_id"`
-	DonorUserID  *int      `json:"donor_user_id"`
+	DonorUserID  *int      `json:"-"`
 	Type         string    `json:"type"`
 	Amount       float64   `json:"amount"`
 	Currency     string    `json:"currency"`
-	PaymentRef   *string   `json:"payment_ref"`
+	PaymentRef   *string   `json:"-"`
 	Description  *string   `json:"description"`
+	DonorName    *string   `json:"donor_name"`
 	IsAnonymous  bool      `json:"is_anonymous"`
 	DonorMessage *string   `json:"donor_message"`
 	CreatedAt    time.Time `json:"created_at"`
+}
+
+type DonationRequest struct {
+	CampaignID  int     `json:"-"`
+	Amount      float64 `json:"amount"`
+	DonorUserID int     `json:"-"`
+}
+
+type LedgerEntryPage struct {
+	Items  []*LedgerEntry `json:"items"`
+	Total  int            `json:"total"`
+	Limit  int            `json:"limit"`
+	Offset int            `json:"offset"`
+}
+
+type LedgerEntryListQuery struct {
+	CampaignID    int
+	DonorUserID   int
+	Limit         int
+	Offset        int
+	MaskAnonymous bool
 }

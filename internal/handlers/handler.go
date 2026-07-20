@@ -94,6 +94,13 @@ type IService interface {
 
 	// UpdateProfile partially updates the user's profile information (full name and/or phone).
 	UpdateProfile(ctx context.Context, userID int, req models.UpdateProfileRequest) error
+
+	// --- Campaings ---
+	GetAllCampaigns(ctx context.Context, q models.CampaignListQuery) (*models.CampaignPage, error)
+	GetCampaignByID(ctx context.Context, id int) (*models.PublicCampaign, error)
+	ProcessDonation(ctx context.Context, donation models.DonationRequest) (*models.LedgerEntry, error)
+	GetDonationsByDonorUser(ctx context.Context, userID int) (*models.LedgerEntryPage, error)
+	GetDonationsByCampaign(ctx context.Context, campaignID int) (*models.LedgerEntryPage, error)
 }
 
 type OAuthProvider interface {
@@ -252,6 +259,13 @@ func (h *Handler) InitRoutes() *gin.Engine {
 
 		v1.GET("/team", h.getAllTeamMembers)
 		v1.GET("/team/:id", h.getTeamMemberByID)
+
+		// Campaigns.
+		v1.GET("/campaigns", h.getActiveCampaigns)
+		v1.GET("/campaigns/:id", h.getCampaignByID)
+		v1.GET("/campaigns/:id/ledger", h.getCampaignLedger)
+		v1.POST("/campaigns/:id/donate", h.middleware.AuthMiddleware(), h.donate)
+		v1.GET("/donations/my", h.middleware.AuthMiddleware(), h.getMyDonations)
 	}
 	return router
 }

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
+	"strings"
 
 	"shb/internal/models"
 
@@ -14,6 +16,7 @@ import (
 
 var (
 	ErrCampaignNotFound  = errors.New("campaign not found")
+	ErrCampaignNotActive = errors.New("campaign is not active")
 	ErrInvalidAmount     = errors.New("amount must be positive")
 	ErrInvalidCampaignID = errors.New("invalid campaign id")
 )
@@ -131,6 +134,57 @@ func (r *CampaignLedgerRepository) GetByID(ctx context.Context, id int) (*models
 	return &c, nil
 }
 
+func (r *CampaignLedgerRepository) GetCampaignDetails(ctx context.Context, id int) (*models.PublicCampaign, error) {
+	if id <= 0 {
+		return nil, fmt.Errorf("%w: %d", ErrInvalidCampaignID, id)
+	}
+
+	query := `
+		SELECT c.id,
+			c.title,
+			c.description,
+			c.target_amount,
+			c.collected_amount,
+			c.currency,
+			c.status,
+			c.deadline,
+			c.completed_at,
+			c.cancelled_reason,
+			c.created_at,
+			c.updated_at,
+			p.name
+		FROM medical_campaigns c
+		LEFT JOIN service_providers p
+			ON p.id = c.provider_id AND p.is_deleted = false
+		WHERE c.id = $1 AND c.is_deleted = false
+	`
+
+	var campaign models.PublicCampaign
+	err := r.db.QueryRow(ctx, query, id).Scan(
+		&campaign.ID,
+		&campaign.Title,
+		&campaign.Description,
+		&campaign.TargetAmount,
+		&campaign.CollectedAmount,
+		&campaign.Currency,
+		&campaign.Status,
+		&campaign.Deadline,
+		&campaign.CompletedAt,
+		&campaign.CancelledReason,
+		&campaign.CreatedAt,
+		&campaign.UpdatedAt,
+		&campaign.ClinicName,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrCampaignNotFound
+		}
+		return nil, fmt.Errorf("get campaign details %d: %w", id, err)
+	}
+
+	return &campaign, nil
+}
+
 func (r *CampaignLedgerRepository) UpdateStatus(ctx context.Context, id int, status string) error {
 	if id <= 0 {
 		return fmt.Errorf("%w: %d", ErrInvalidCampaignID, id)
@@ -179,15 +233,15 @@ func (r *CampaignLedgerRepository) incrementCollectedAmount(
 	if campaignID <= 0 {
 		return fmt.Errorf("%w: %d", ErrInvalidCampaignID, campaignID)
 	}
-	if amount == 0 {
-		return fmt.Errorf("%w: got 0", ErrInvalidAmount)
+	if amount <= 0 || math.IsNaN(amount) || math.IsInf(amount, 0) {
+		return fmt.Errorf("%w: got %v", ErrInvalidAmount, amount)
 	}
 
 	query := `
 		UPDATE medical_campaigns
 		SET collected_amount = collected_amount + $1,
 		    updated_at = NOW()
-		WHERE id = $2 AND is_deleted = false
+		WHERE id = $2 AND is_deleted = false AND status = 'active'
 	`
 
 	tag, err := tx.Exec(ctx, query, amount, campaignID)
@@ -198,7 +252,17 @@ func (r *CampaignLedgerRepository) incrementCollectedAmount(
 	}
 
 	if tag.RowsAffected() == 0 {
-		r.log.Warn("increment collected amount affected no rows", "campaign_id", campaignID)
+		var status string
+		if err := tx.QueryRow(ctx, `SELECT status FROM medical_campaigns WHERE id = $1 AND is_deleted = false`, campaignID).Scan(&status); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				r.log.Warn("increment collected amount affected no rows", "campaign_id", campaignID)
+				return ErrCampaignNotFound
+			}
+			return fmt.Errorf("check campaign status %d: %w", campaignID, err)
+		}
+		if status != models.CampaignStatusActive {
+			return ErrCampaignNotActive
+		}
 		return ErrCampaignNotFound
 	}
 
@@ -335,4 +399,204 @@ func (r *CampaignLedgerRepository) GetTotalDonationsByCampaign(
 	}
 
 	return total, nil
+}
+
+func (r *CampaignLedgerRepository) GetAllCampaigns(ctx context.Context, q models.CampaignListQuery) (*models.CampaignPage, error) {
+	conds := []string{
+		"is_deleted IS FALSE",
+	}
+	args := make([]any, 0, 1)
+
+	var argIndex int
+	if v := q.Status; v != "" {
+		argIndex++
+		conds, args = append(conds, fmt.Sprintf(
+			"status = $%d",
+			argIndex,
+		)), append(args, v)
+	}
+
+	where := strings.Join(conds, " AND ")
+	query := fmt.Sprintf(`
+		SELECT id,
+			title,
+			description,
+			target_amount,
+		    collected_amount,
+			currency,
+			status,
+		    deadline,
+			completed_at,
+			cancelled_reason,
+			created_at,
+			updated_at,
+			COUNT(*) OVER()
+		FROM medical_campaigns
+		WHERE %s
+		ORDER BY id DESC
+		%s`,
+		where,
+		formatLimitOffset(q.Limit, q.Offset),
+	)
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	campaigns := make([]*models.PublicCampaign, 0)
+	var totalCount int
+	for rows.Next() {
+		var c models.PublicCampaign
+		err = rows.Scan(
+			&c.ID,
+			&c.Title,
+			&c.Description,
+			&c.TargetAmount,
+			&c.CollectedAmount,
+			&c.Currency,
+			&c.Status,
+			&c.Deadline,
+			&c.CompletedAt,
+			&c.CancelledReason,
+			&c.CreatedAt,
+			&c.UpdatedAt,
+			&totalCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning: %w", err)
+		}
+		campaigns = append(campaigns, &c)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error itarating over rows: %w", err)
+	}
+
+	if len(campaigns) == 0 && q.Offset > 0 {
+		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM medical_campaigns WHERE %s", where)
+		row := r.db.QueryRow(ctx, countQuery, args...)
+		if err := row.Scan(&totalCount); err != nil {
+			return nil, err
+		}
+	}
+
+	return &models.CampaignPage{
+		Limit:  q.Limit,
+		Offset: q.Offset,
+		Items:  campaigns,
+		Total:  totalCount,
+	}, nil
+
+}
+
+func (r *CampaignLedgerRepository) GetAllLedgerEntries(ctx context.Context, q models.LedgerEntryListQuery) (*models.LedgerEntryPage, error) {
+	if q.CampaignID < 0 {
+		return nil, fmt.Errorf("%w: %d", ErrInvalidCampaignID, q.CampaignID)
+	}
+	if q.DonorUserID < 0 {
+		return nil, errors.New("invalid donor user id")
+	}
+
+	conds := []string{"c.is_deleted IS FALSE"}
+	args := make([]any, 0, 1)
+
+	var argIndex int
+	if v := q.CampaignID; v != 0 {
+		argIndex++
+		conds, args = append(conds, fmt.Sprintf(
+			"l.campaign_id = $%d",
+			argIndex,
+		)), append(args, v)
+	}
+	if v := q.DonorUserID; v != 0 {
+		argIndex++
+		conds, args = append(conds, fmt.Sprintf(
+			"l.donor_user_id = $%d",
+			argIndex,
+		)), append(args, v)
+	}
+
+	where := strings.Join(conds, " AND ")
+	donorName := "u.full_name"
+	if q.MaskAnonymous {
+		donorName = "CASE WHEN l.is_anonymous THEN NULL ELSE u.full_name END"
+	}
+
+	query := fmt.Sprintf(`
+		SELECT l.id,
+			l.campaign_id,
+			l.donor_user_id,
+			l.type,
+			l.amount,
+			l.currency,
+			l.payment_ref,
+			l.description,
+			%s AS donor_name,
+			l.is_anonymous,
+			l.donor_message,
+			l.created_at,
+			COUNT(*) OVER()
+		FROM ledger l
+		JOIN medical_campaigns c
+			ON c.id = l.campaign_id AND c.is_deleted = false
+		LEFT JOIN users u
+			ON u.id = l.donor_user_id AND u.is_deleted = false
+		WHERE %s
+		ORDER BY l.created_at DESC, l.id DESC
+		%s
+	`, donorName, where, formatLimitOffset(q.Limit, q.Offset))
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	entries := make([]*models.LedgerEntry, 0)
+	var totalCount int
+	for rows.Next() {
+		entry := new(models.LedgerEntry)
+		err := rows.Scan(
+			&entry.ID,
+			&entry.CampaignID,
+			&entry.DonorUserID,
+			&entry.Type,
+			&entry.Amount,
+			&entry.Currency,
+			&entry.PaymentRef,
+			&entry.Description,
+			&entry.DonorName,
+			&entry.IsAnonymous,
+			&entry.DonorMessage,
+			&entry.CreatedAt,
+			&totalCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan campaign ledger: %w", err)
+		}
+		entries = append(entries, entry)
+	}
+
+	if len(entries) == 0 && q.Offset > 0 {
+		countQuery := fmt.Sprintf(`
+			SELECT COUNT(*)
+			FROM ledger l
+			JOIN medical_campaigns c
+				ON c.id = l.campaign_id AND c.is_deleted = false
+			WHERE %s`, where)
+		row := r.db.QueryRow(ctx, countQuery, args...)
+		if err := row.Scan(&totalCount); err != nil {
+			return nil, err
+		}
+	}
+
+	return &models.LedgerEntryPage{
+		Limit:  q.Limit,
+		Offset: q.Offset,
+		Items:  entries,
+		Total:  totalCount,
+	}, nil
 }

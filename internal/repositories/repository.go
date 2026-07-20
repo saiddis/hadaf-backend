@@ -4,6 +4,8 @@
 package repositories
 
 import (
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 )
@@ -15,4 +17,16 @@ type Repository struct {
 
 func NewRepository(postgresConn *pgxpool.Pool, log *zerolog.Logger) *Repository {
 	return &Repository{postgres: postgresConn, logger: log}
+}
+
+func formatLimitOffset(limit, offset int) string {
+	switch {
+	case limit > 0 && offset > 0:
+		return fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
+	case limit > 0:
+		return fmt.Sprintf("LIMIT %d", limit)
+	case offset > 0:
+		return fmt.Sprintf("OFFSET %d", offset)
+	}
+	return ""
 }
