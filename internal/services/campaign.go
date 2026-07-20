@@ -15,7 +15,7 @@ import (
 )
 
 func (s *Service) GetAllCampaigns(ctx context.Context, q models.CampaignListQuery) (*models.CampaignPage, error) {
-	return s.compaignRepo.GetAllCampaigns(ctx, q)
+	return s.campaignRepo.GetAllCampaigns(ctx, q)
 }
 
 func (s *Service) GetCampaignByID(ctx context.Context, id int) (*models.PublicCampaign, error) {
@@ -23,7 +23,7 @@ func (s *Service) GetCampaignByID(ctx context.Context, id int) (*models.PublicCa
 		return nil, myerrors.NewBadRequestErr("invalid campaign id")
 	}
 
-	campaign, err := s.compaignRepo.GetCampaignDetails(ctx, id)
+	campaign, err := s.campaignRepo.GetCampaignDetails(ctx, id)
 	if err != nil {
 		if errors.Is(err, repositories.ErrCampaignNotFound) {
 			return nil, fmt.Errorf("%w: could not find campaign with id %d", myerrors.ErrNotFound, id)
@@ -39,7 +39,7 @@ func (s *Service) GetDonationsByCampaign(ctx context.Context, campaignID int) (*
 		return nil, myerrors.NewBadRequestErr("invalid campaign id")
 	}
 
-	if _, err := s.compaignRepo.GetByID(ctx, campaignID); err != nil {
+	if _, err := s.campaignRepo.GetByID(ctx, campaignID); err != nil {
 		if errors.Is(err, repositories.ErrCampaignNotFound) {
 			return nil, fmt.Errorf("%w: could not find campaign with id %d", myerrors.ErrNotFound, campaignID)
 		}
@@ -68,7 +68,7 @@ func (s *Service) ProcessDonation(ctx context.Context, donation models.DonationR
 		return nil, myerrors.NewBadRequestErr("amount must be greater than 0")
 	}
 
-	campaign, err := s.compaignRepo.GetByID(ctx, donation.CampaignID)
+	campaign, err := s.campaignRepo.GetByID(ctx, donation.CampaignID)
 	if err != nil {
 		if errors.Is(err, repositories.ErrCampaignNotFound) {
 			return nil, fmt.Errorf("%w: could not find campaign with id %d", myerrors.ErrNotFound, donation.CampaignID)
@@ -96,6 +96,43 @@ func (s *Service) ProcessDonation(ctx context.Context, donation models.DonationR
 			}
 		}
 		return nil, err
+	}
+
+	updatedCampaign, err := s.campaignRepo.GetByID(ctx, donation.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+
+	overflow := updatedCampaign.CollectedAmount - updatedCampaign.TargetAmount
+
+	if overflow >= 0 {
+		if err = s.campaignRepo.UpdateStatus(ctx, updatedCampaign.ID, models.CampaignStatusReadyForPayment); err != nil {
+			return nil, err
+		}
+	}
+
+	if overflow > 0 {
+		overflowToProvider := models.LedgerEntry{
+			CampaignID:  &updatedCampaign.ID,
+			Amount:      -overflow,
+			Type:        models.LedgerTypeOverflowToProvider,
+			DonorUserID: &donation.DonorUserID,
+			Currency:    updatedCampaign.Currency,
+		}
+		if err = s.ledgerRepo.CreateLedgerEntry(ctx, &overflowToProvider); err != nil {
+			return nil, err
+		}
+
+		overflowToGeneralFund := models.LedgerEntry{
+			CampaignID:  nil,
+			Amount:      overflow,
+			Type:        models.LedgerTypeOverflowToGeneral,
+			DonorUserID: &donation.DonorUserID,
+			Currency:    updatedCampaign.Currency,
+		}
+		if err = s.ledgerRepo.CreateLedgerEntry(ctx, &overflowToGeneralFund); err != nil {
+			return nil, err
+		}
 	}
 
 	return entry, nil
