@@ -6,10 +6,10 @@ package models
 import "time"
 
 const (
-	LedgerTypeDonation          = "donation"
-	LedgerTypePaymentToProvider = "payment_to_provider"
-	LedgerTypeOverflowToGeneral = "overflow_to_general"
-	LedgerTypeRefund            = "refund"
+	LedgerTypeDonation           = "donation"
+	LedgerTypeOverflowToProvider = "overflow_out"
+	LedgerTypeOverflowToGeneral  = "overflow_in"
+	LedgerTypeRefund             = "refund"
 )
 
 type LedgerEntry struct {
