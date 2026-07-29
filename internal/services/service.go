@@ -5,6 +5,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"shb/internal/configs"
@@ -29,12 +30,19 @@ type IRepository interface {
 	GetUserByID(ctx context.Context, id int) (*models.User, error)
 	// CreateUser persists a new user record to the database.
 	CreateUser(ctx context.Context, user *models.User) error
+	// UpdateUserProfile patches the editable profile fields (only the non-nil
+	// arguments are written) and returns the refreshed user.
+	UpdateUserProfile(ctx context.Context, id int, fullName, phone *string) (*models.User, error)
 	// ActivateUser marks the user account as active.
 	ActivateUser(ctx context.Context, id int) error
 	// GetUserByOAuthInfo return the user that matches the given OAuth user id and provider name.
 	GetUserByOAuthInfo(ctx context.Context, oauthUserID, oauthProviderName string) (*models.User, error)
 	// UpdateUserOAuthInfoByEmail updates user's oauth provider name and oauth user id by email from info
 	UpdateUserOAuthInfoByEmail(ctx context.Context, info models.OAuthUserInfo) (*models.User, error)
+
+	// Ping verifies connectivity to the database (used by readiness checks).
+	Ping(ctx context.Context) error
+
 	// UpdateProfile updates the full_name and phone fields of a user if provided.
 	UpdateProfile(ctx context.Context, id int, req models.UpdateProfileRequest) error
 	// SaveOTP persists a new OTP record to the database.
@@ -67,6 +75,9 @@ type IRepository interface {
 	UpdateBookingStatus(ctx context.Context, bookingID int, status string) error
 	UpdateBookingQuantity(ctx context.Context, bookingID int, qty float64) error
 	IncrementReceivedQty(ctx context.Context, needID int, qty float64) error
+	// CompleteBookingTx atomically completes a booking and applies its quantity
+	// to the need in a single transaction.
+	CompleteBookingTx(ctx context.Context, bookingID, needID int, qty float64) error
 	GetBookingsByInstitution(ctx context.Context, institutionID int) ([]*models.Booking, error)
 
 	// --- Event Methods ---
@@ -110,6 +121,19 @@ type Service struct {
 	token  tokens.ITokenIssuer
 	fs     fs.Storage
 	email  email.IEmailAdapter
+}
+
+// HealthCheck verifies that the critical downstream dependencies (database and
+// cache) are reachable. It is used by the readiness probe so an orchestrator
+// does not route traffic to an instance that cannot serve requests.
+func (s *Service) HealthCheck(ctx context.Context) error {
+	if err := s.repo.Ping(ctx); err != nil {
+		return fmt.Errorf("database unreachable: %w", err)
+	}
+	if err := s.cache.Ping(ctx); err != nil {
+		return fmt.Errorf("cache unreachable: %w", err)
+	}
+	return nil
 }
 
 // NewService constructs a Service with all required dependencies injected.

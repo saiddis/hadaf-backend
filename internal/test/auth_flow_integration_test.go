@@ -18,6 +18,7 @@ import (
 	"shb/internal/repositories"
 	"shb/internal/services"
 	"shb/pkg/external/sms/smsProvider"
+	"shb/pkg/metrics"
 	"shb/pkg/middlewares"
 	"shb/pkg/tokens/jwtToken"
 	"strings"
@@ -195,7 +196,7 @@ func buildRouter(t *testing.T, pool *pgxpool.Pool) http.Handler {
 	cfg.Security.RefreshTokenTTL = 720 * time.Hour
 	cfg.Service = *svcCfg
 
-	h := handlers.NewHandler(svc, allowAllLimiter{}, middlewares.NewMiddleware(secret), &logger, cfg)
+	h := handlers.NewHandler(svc, allowAllLimiter{}, middlewares.NewMiddleware(secret), metrics.New(), &logger, cfg)
 	return h.InitRoutes()
 }
 

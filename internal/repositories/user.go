@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // GetUserByPhone finds a user by phone.
@@ -153,6 +154,56 @@ func (r *Repository) CreateUser(ctx context.Context, u *models.User) error {
 		return fmt.Errorf("create user query: %w", err)
 	}
 	return nil
+}
+
+// uniqueViolationCode is the PostgreSQL error code for a unique constraint
+const uniqueViolationCode = "23505"
+
+func (r *Repository) UpdateUserProfile(ctx context.Context, id int, fullName, phone *string) (*models.User, error) {
+	setClauses := make([]string, 0, 2)
+	args := make([]any, 0, 3)
+
+	if fullName != nil {
+		args = append(args, *fullName)
+		setClauses = append(setClauses, fmt.Sprintf("full_name = $%d", len(args)))
+	}
+	if phone != nil {
+		args = append(args, *phone)
+		setClauses = append(setClauses, fmt.Sprintf("phone = $%d", len(args)))
+	}
+
+	// Nothing to update: return the current state without touching the row.
+	if len(setClauses) == 0 {
+		return r.GetUserByID(ctx, id)
+	}
+
+	setClauses = append(setClauses, "updated_at = NOW()")
+	args = append(args, id)
+
+	query := fmt.Sprintf(`
+		UPDATE users
+		SET %s
+		WHERE id = $%d
+		RETURNING id, institution_id, full_name, phone, email, password, role, is_active, is_approved, created_at, updated_at
+	`, strings.Join(setClauses, ", "), len(args))
+
+	var u dbUser
+	err := r.postgres.QueryRow(ctx, query, args...).Scan(
+		&u.ID, &u.InstitutionID, &u.FullName, &u.Phone, &u.Email, &u.Password,
+		&u.Role, &u.IsActive, &u.IsApproved, &u.CreatedAt, &u.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, myerrors.ErrNotFound
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode {
+			return nil, myerrors.NewConflictErr("phone number is already in use")
+		}
+		return nil, fmt.Errorf("update user profile query: %w", err)
+	}
+
+	return u.ToDomain(), nil
 }
 
 func (r *Repository) ActivateUser(ctx context.Context, id int) error {

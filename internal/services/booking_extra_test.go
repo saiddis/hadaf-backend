@@ -50,8 +50,8 @@ func TestService_CompleteBooking(t *testing.T) {
 	d.Repo.On("GetBookingByID", ctx, 1).Return(booking, nil)
 	d.Repo.On("GetNeedByID", ctx, 20).Return(need, nil)
 	d.Repo.On("GetUserByID", ctx, 10).Return(&models.User{ID: 10, Role: models.RoleSuperAdmin}, nil)
-	d.Repo.On("UpdateBookingStatus", ctx, 1, models.BookingStatusCompleted).Return(nil)
-	d.Repo.On("IncrementReceivedQty", ctx, 20, 2.0).Return(nil)
+	// Status update and quantity increment are now a single atomic transaction.
+	d.Repo.On("CompleteBookingTx", ctx, 1, 20, 2.0).Return(nil)
 	require.NoError(t, svc.CompleteBooking(ctx, 1, 10))
 }
 

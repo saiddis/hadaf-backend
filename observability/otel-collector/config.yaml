@@ -1,0 +1,54 @@
+# OpenTelemetry Collector configuration (Phase 3).
+#
+# Role in the pipeline: the app pushes traces over OTLP/gRPC (:4317); the
+# Collector batches them, strips any potential PII as a safety net, and exports
+# them to Tempo. Metrics stay on the Prometheus pull model (see report §2.1) —
+# the Collector is deliberately NOT in the metrics path.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Bound memory so a trace spike cannot OOM the Collector.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+  # Defence in depth against PII in spans (report §2.5). The app must never put
+  # phone/OTP/email in span attributes; this deletes them if one slips through.
+  attributes/redact:
+    actions:
+      - key: phone
+        action: delete
+      - key: otp
+        action: delete
+      - key: email
+        action: delete
+      - key: password
+        action: delete
+
+exporters:
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/redact, batch]
+      exporters: [otlp/tempo]
+  telemetry:
+    logs:
+      level: info

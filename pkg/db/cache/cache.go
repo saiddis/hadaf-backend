@@ -21,4 +21,7 @@ type ICache interface {
 
 	// Increment atomically increments the numeric value stored under the given key by 1.
 	Increment(ctx context.Context, key string) error
+
+	// Ping verifies connectivity to the cache (used by readiness checks).
+	Ping(ctx context.Context) error
 }

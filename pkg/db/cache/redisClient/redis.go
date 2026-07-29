@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -55,6 +56,19 @@ func NewRedisClient() (*RedisCache, error) {
 		DB:   db,
 	})
 
+	// Emit a span per Redis command. Uses the global tracer provider (no-op
+	// until tracing is enabled), so it is free when tracing is off.
+	//
+	// WithDBStatement(false) is a PII safeguard: this app's Redis keys embed
+	// phone/email/IP (e.g. "user:<phone>:send_otp", "login:<email>"), and the
+	// default db.statement attribute would record the full command including
+	// the key. The Collector's redaction is key-based and cannot strip a value
+	// buried inside a statement string, so we drop the statement at the source.
+	// Spans still carry the command name (GET/SET/INCR) and timing.
+	if err := redisotel.InstrumentTracing(client, redisotel.WithDBStatement(false)); err != nil {
+		return nil, fmt.Errorf("failed to instrument redis tracing: %w", err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutInt)*time.Second)
 	defer cancel()
 
@@ -79,4 +93,9 @@ func (r *RedisCache) Delete(ctx context.Context, key string) error {
 
 func (r *RedisCache) Increment(ctx context.Context, key string) error {
 	return r.client.Incr(ctx, key).Err()
+}
+
+// Ping verifies the Redis connection is alive. Used by readiness probes.
+func (r *RedisCache) Ping(ctx context.Context) error {
+	return r.client.Ping(ctx).Err()
 }

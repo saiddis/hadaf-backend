@@ -10,6 +10,7 @@ import (
 	"os"
 	"shb/pkg/constants"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -54,7 +55,19 @@ func NewPgxPool() (*pgxpool.Pool, error) {
 		sslMode,
 	)
 
-	pool, err := pgxpool.New(context.Background(), dsn)
+	poolCfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse db config: %w", err)
+	}
+
+	// Attach the OpenTelemetry query tracer so every SQL statement becomes a
+	// child span of the request. It uses the global tracer provider, which is a
+	// no-op until tracing is enabled, so this is free when tracing is off.
+	poolCfg.ConnConfig.Tracer = otelpgx.NewTracer(
+		otelpgx.WithTrimSQLInSpanName(),
+	)
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), poolCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to db: %w", err)
 	}

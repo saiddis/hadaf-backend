@@ -34,6 +34,11 @@ const (
 	MaxPageLimit     = 100
 )
 
+// Application environments. These are the canonical values for APP_ENV; all
+// environment checks must compare against these constants rather than ad-hoc
+// string literals.
 const (
-	LocalAppEnv = "local"
+	LocalAppEnv       = "local"
+	DevelopmentAppEnv = "development"
+	ProductionAppEnv  = "production"
 )

@@ -73,6 +73,55 @@ func (_c *MockIRepository_ActivateUser_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// CompleteBookingTx provides a mock function with given fields: ctx, bookingID, needID, qty
+func (_m *MockIRepository) CompleteBookingTx(ctx context.Context, bookingID int, needID int, qty float64) error {
+	ret := _m.Called(ctx, bookingID, needID, qty)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CompleteBookingTx")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, int, float64) error); ok {
+		r0 = rf(ctx, bookingID, needID, qty)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIRepository_CompleteBookingTx_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CompleteBookingTx'
+type MockIRepository_CompleteBookingTx_Call struct {
+	*mock.Call
+}
+
+// CompleteBookingTx is a helper method to define mock.On call
+//   - ctx context.Context
+//   - bookingID int
+//   - needID int
+//   - qty float64
+func (_e *MockIRepository_Expecter) CompleteBookingTx(ctx interface{}, bookingID interface{}, needID interface{}, qty interface{}) *MockIRepository_CompleteBookingTx_Call {
+	return &MockIRepository_CompleteBookingTx_Call{Call: _e.mock.On("CompleteBookingTx", ctx, bookingID, needID, qty)}
+}
+
+func (_c *MockIRepository_CompleteBookingTx_Call) Run(run func(ctx context.Context, bookingID int, needID int, qty float64)) *MockIRepository_CompleteBookingTx_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].(int), args[3].(float64))
+	})
+	return _c
+}
+
+func (_c *MockIRepository_CompleteBookingTx_Call) Return(_a0 error) *MockIRepository_CompleteBookingTx_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIRepository_CompleteBookingTx_Call) RunAndReturn(run func(context.Context, int, int, float64) error) *MockIRepository_CompleteBookingTx_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateBooking provides a mock function with given fields: ctx, booking
 func (_m *MockIRepository) CreateBooking(ctx context.Context, booking *models.Booking) (int, error) {
 	ret := _m.Called(ctx, booking)
@@ -2097,6 +2146,52 @@ func (_c *MockIRepository_MarkOTPAsVerified_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// Ping provides a mock function with given fields: ctx
+func (_m *MockIRepository) Ping(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Ping")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIRepository_Ping_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Ping'
+type MockIRepository_Ping_Call struct {
+	*mock.Call
+}
+
+// Ping is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockIRepository_Expecter) Ping(ctx interface{}) *MockIRepository_Ping_Call {
+	return &MockIRepository_Ping_Call{Call: _e.mock.On("Ping", ctx)}
+}
+
+func (_c *MockIRepository_Ping_Call) Run(run func(ctx context.Context)) *MockIRepository_Ping_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockIRepository_Ping_Call) Return(_a0 error) *MockIRepository_Ping_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIRepository_Ping_Call) RunAndReturn(run func(context.Context) error) *MockIRepository_Ping_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RevokeAllUserRefreshTokens provides a mock function with given fields: ctx, userID
 func (_m *MockIRepository) RevokeAllUserRefreshTokens(ctx context.Context, userID int) error {
 	ret := _m.Called(ctx, userID)
@@ -2488,6 +2583,12 @@ func (_c *MockIRepository_UpdateNeed_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// UpdateUserProfile provides a mock function with given fields: ctx, id, fullName, phone
+func (_m *MockIRepository) UpdateUserProfile(ctx context.Context, id int, fullName *string, phone *string) (*models.User, error) {
+	ret := _m.Called(ctx, id, fullName, phone)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateUserProfile")
 // UpdateUserOAuthInfoByEmail provides a mock function with given fields: ctx, info
 func (_m *MockIRepository) UpdateUserOAuthInfoByEmail(ctx context.Context, info models.OAuthUserInfo) (*models.User, error) {
 	ret := _m.Called(ctx, info)
@@ -2498,6 +2599,11 @@ func (_m *MockIRepository) UpdateUserOAuthInfoByEmail(ctx context.Context, info 
 
 	var r0 *models.User
 	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, *string, *string) (*models.User, error)); ok {
+		return rf(ctx, id, fullName, phone)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int, *string, *string) *models.User); ok {
+		r0 = rf(ctx, id, fullName, phone)
 	if rf, ok := ret.Get(0).(func(context.Context, models.OAuthUserInfo) (*models.User, error)); ok {
 		return rf(ctx, info)
 	}
@@ -2509,6 +2615,8 @@ func (_m *MockIRepository) UpdateUserOAuthInfoByEmail(ctx context.Context, info 
 		}
 	}
 
+	if rf, ok := ret.Get(1).(func(context.Context, int, *string, *string) error); ok {
+		r1 = rf(ctx, id, fullName, phone)
 	if rf, ok := ret.Get(1).(func(context.Context, models.OAuthUserInfo) error); ok {
 		r1 = rf(ctx, info)
 	} else {
@@ -2518,6 +2626,23 @@ func (_m *MockIRepository) UpdateUserOAuthInfoByEmail(ctx context.Context, info 
 	return r0, r1
 }
 
+// MockIRepository_UpdateUserProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateUserProfile'
+type MockIRepository_UpdateUserProfile_Call struct {
+	*mock.Call
+}
+
+// UpdateUserProfile is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id int
+//   - fullName *string
+//   - phone *string
+func (_e *MockIRepository_Expecter) UpdateUserProfile(ctx interface{}, id interface{}, fullName interface{}, phone interface{}) *MockIRepository_UpdateUserProfile_Call {
+	return &MockIRepository_UpdateUserProfile_Call{Call: _e.mock.On("UpdateUserProfile", ctx, id, fullName, phone)}
+}
+
+func (_c *MockIRepository_UpdateUserProfile_Call) Run(run func(ctx context.Context, id int, fullName *string, phone *string)) *MockIRepository_UpdateUserProfile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].(*string), args[3].(*string))
 // MockIRepository_UpdateUserOAuthInfoByEmail_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateUserOAuthInfoByEmail'
 type MockIRepository_UpdateUserOAuthInfoByEmail_Call struct {
 	*mock.Call
@@ -2537,11 +2662,13 @@ func (_c *MockIRepository_UpdateUserOAuthInfoByEmail_Call) Run(run func(ctx cont
 	return _c
 }
 
+func (_c *MockIRepository_UpdateUserProfile_Call) Return(_a0 *models.User, _a1 error) *MockIRepository_UpdateUserProfile_Call {
 func (_c *MockIRepository_UpdateUserOAuthInfoByEmail_Call) Return(_a0 *models.User, _a1 error) *MockIRepository_UpdateUserOAuthInfoByEmail_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
+func (_c *MockIRepository_UpdateUserProfile_Call) RunAndReturn(run func(context.Context, int, *string, *string) (*models.User, error)) *MockIRepository_UpdateUserProfile_Call {
 func (_c *MockIRepository_UpdateUserOAuthInfoByEmail_Call) RunAndReturn(run func(context.Context, models.OAuthUserInfo) (*models.User, error)) *MockIRepository_UpdateUserOAuthInfoByEmail_Call {
 	_c.Call.Return(run)
 	return _c

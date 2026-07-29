@@ -1,0 +1,125 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "title": "Hadaf API — RED & Dependencies",
+  "uid": "shb-api-red",
+  "tags": ["shb", "api"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Request rate (req/s) by status",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(shb_http_requests_total[5m]))",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "5xx error ratio",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 0.01 },
+            { "color": "red", "value": 0.05 }
+          ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(shb_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(shb_http_requests_total[5m])), 1)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Panics (last 1h)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "red", "value": 1 }
+          ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "increase(shb_http_panics_total[1h])", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request latency (p50 / p95 / p99)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(shb_http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(shb_http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum(rate(shb_http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p99", "refId": "C" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "External dependency latency p95 (by service)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(shb_external_request_duration_seconds_bucket[5m])) by (le, service))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "External dependency error rate (by service)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(shb_external_request_duration_seconds_count{status=\"error\"}[5m]))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "DB connection pool",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "expr": "shb_db_pool_acquired_conns", "legendFormat": "acquired", "refId": "A" },
+        { "expr": "shb_db_pool_idle_conns", "legendFormat": "idle", "refId": "B" },
+        { "expr": "shb_db_pool_total_conns", "legendFormat": "total", "refId": "C" },
+        { "expr": "shb_db_pool_max_conns", "legendFormat": "max", "refId": "D" }
+      ]
+    }
+  ]
+}

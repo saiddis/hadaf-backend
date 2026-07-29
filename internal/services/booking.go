@@ -209,12 +209,11 @@ func (s *Service) CompleteBooking(ctx context.Context, bookingID, institutionUse
 		}
 	}
 
-	if err := s.repo.UpdateBookingStatus(ctx, bookingID, models.BookingStatusCompleted); err != nil {
-		return fmt.Errorf("update booking status: %w", err)
-	}
-
-	if err := s.repo.IncrementReceivedQty(ctx, booking.NeedID, booking.Quantity); err != nil {
-		return fmt.Errorf("increment received qty: %w", err)
+	// Status update and quantity increment must be atomic: a completed booking
+	// whose quantity was not applied (or vice versa) leaves the need's totals
+	// permanently inconsistent.
+	if err := s.repo.CompleteBookingTx(ctx, bookingID, booking.NeedID, booking.Quantity); err != nil {
+		return fmt.Errorf("complete booking: %w", err)
 	}
 
 	log.Info().Float64("quantity", booking.Quantity).Msg("booking completed")

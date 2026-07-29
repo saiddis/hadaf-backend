@@ -227,3 +227,45 @@ func (r *Repository) IncrementReceivedQty(ctx context.Context, needID int, qty f
 	}
 	return nil
 }
+
+// CompleteBookingTx atomically marks a booking as completed and increments the
+// received quantity on its need. Both writes happen in a single transaction, so
+// the booking can never be marked completed without the quantity being applied
+// (and vice versa).
+func (r *Repository) CompleteBookingTx(ctx context.Context, bookingID, needID int, qty float64) error {
+	tx, err := r.postgres.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin complete booking tx: %w", err)
+	}
+	// Rollback is a no-op once the transaction has been committed.
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	statusRes, err := tx.Exec(ctx, `
+		UPDATE bookings
+		SET status = $1, updated_at = NOW()
+		WHERE id = $2 AND is_deleted = false
+	`, models.BookingStatusCompleted, bookingID)
+	if err != nil {
+		return fmt.Errorf("update booking status: %w", err)
+	}
+	if statusRes.RowsAffected() == 0 {
+		return fmt.Errorf("booking not found or already deleted")
+	}
+
+	qtyRes, err := tx.Exec(ctx, `
+		UPDATE needs
+		SET received_qty = received_qty + $1, updated_at = NOW()
+		WHERE id = $2 AND is_deleted = false
+	`, qty, needID)
+	if err != nil {
+		return fmt.Errorf("increment received qty: %w", err)
+	}
+	if qtyRes.RowsAffected() == 0 {
+		return fmt.Errorf("need not found or already deleted")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit complete booking tx: %w", err)
+	}
+	return nil
+}

@@ -8,9 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"shb/internal/models"
 	"shb/pkg/myerrors"
@@ -49,6 +51,16 @@ func (s *Service) SendOTP(ctx context.Context, receiver string) (int, error) {
 	}
 
 	go func(rcv, code, mthd string, id int) {
+		defer func() {
+			if r := recover(); r != nil {
+				s.logger.Error().
+					Interface("panic", r).
+					Bytes("stack", debug.Stack()).
+					Str("method", mthd).
+					Msg("recovered from panic in async OTP delivery")
+			}
+		}()
+
 		var err error
 		if mthd == "email" {
 			subject := "Верификационный код Hadaf"
@@ -417,19 +429,31 @@ func (s *Service) RefreshTokens(ctx context.Context, refreshToken string) (*mode
 		return nil, myerrors.NewUnauthorizedErr("ERR_TOKEN_EXPIRED")
 	}
 
+	// Re-validate the user's current state instead of trusting the (possibly
+	// stale) token claims: a deactivated user must not be able to refresh, and
+	// role/approval changes should propagate into the freshly issued tokens.
+	user, err := s.repo.GetUserByID(ctx, claims.UserID)
+	if err != nil {
+		return nil, myerrors.NewUnauthorizedErr("ERR_USER_NOT_FOUND")
+	}
+	if !user.IsActive {
+		_ = s.repo.RevokeAllUserRefreshTokens(ctx, user.ID)
+		return nil, myerrors.NewUnauthorizedErr("ERR_ACCOUNT_NOT_ACTIVATED")
+	}
+
 	// Rotation: revoke the old token before issuing new ones.
 	if err := s.repo.RevokeRefreshToken(ctx, refreshHash); err != nil {
 		return nil, fmt.Errorf("revoke old token: %w", err)
 	}
 
-	access, refresh, err := s.token.IssueTokens(ctx, claims.UserID, claims.Role, claims.IsApproved)
+	access, refresh, err := s.token.IssueTokens(ctx, user.ID, user.Role, user.IsApproved)
 	if err != nil {
 		return nil, fmt.Errorf("issue new tokens: %w", err)
 	}
 
 	newRefreshHash := utils.HashToken(refresh)
 	newExpiresAt := time.Now().UTC().Add(s.cfg.Security.RefreshTokenTTL)
-	if err := s.repo.SaveRefreshToken(ctx, claims.UserID, newRefreshHash, newExpiresAt); err != nil {
+	if err := s.repo.SaveRefreshToken(ctx, user.ID, newRefreshHash, newExpiresAt); err != nil {
 		return nil, fmt.Errorf("save new refresh token: %w", err)
 	}
 
@@ -511,6 +535,59 @@ func (s *Service) GetUserByID(ctx context.Context, id int) (*models.User, error)
 	return s.repo.GetUserByID(ctx, id)
 }
 
+const (
+	maxFullNameLen = 150
+	maxPhoneLen    = 20
+)
+
+func (s *Service) UpdateProfile(ctx context.Context, userID int, fullName, phone *string) (*models.User, error) {
+	if fullName == nil && phone == nil {
+		return nil, myerrors.NewBadRequestErr("at least one field must be provided")
+	}
+
+	if fullName != nil {
+		trimmed := strings.TrimSpace(*fullName)
+		if trimmed == "" {
+			return nil, myerrors.NewBadRequestErr("full_name must not be empty")
+		}
+		if utf8.RuneCountInString(trimmed) > maxFullNameLen {
+			return nil, myerrors.NewBadRequestErr("full_name is too long")
+		}
+		fullName = &trimmed
+	}
+
+	if phone != nil {
+		trimmed := strings.TrimSpace(*phone)
+		if trimmed == "" {
+			return nil, myerrors.NewBadRequestErr("phone must not be empty")
+		}
+		if utf8.RuneCountInString(trimmed) > maxPhoneLen {
+			return nil, myerrors.NewBadRequestErr("phone is too long")
+		}
+		phone = &trimmed
+
+		if err := s.ensurePhoneAvailable(ctx, trimmed, userID); err != nil {
+			return nil, err
+		}
+	}
+
+	return s.repo.UpdateUserProfile(ctx, userID, fullName, phone)
+}
+
+// ensurePhoneAvailable returns a ConflictErr if the phone number already
+// belongs to a different user.
+func (s *Service) ensurePhoneAvailable(ctx context.Context, phone string, userID int) error {
+	existing, err := s.repo.GetUserByPhone(ctx, phone)
+	if err != nil {
+		if errors.Is(err, myerrors.ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+	if existing.ID != userID {
+		return myerrors.NewConflictErr("phone number is already in use")
+	}
+	return nil
 func (s *Service) UserExists(
 	ctx context.Context,
 	email string,

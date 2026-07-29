@@ -90,6 +90,10 @@ func TestService_RefreshTokens(t *testing.T) {
 	d.Repo.On("GetRefreshToken", ctx, mock.AnythingOfType("string")).Return(&models.RefreshToken{
 		UserID: 1, IsRevoked: false, ExpiresAt: time.Now().Add(time.Hour),
 	}, nil)
+	// RefreshTokens now re-validates the user's current state before rotating.
+	d.Repo.On("GetUserByID", ctx, 1).Return(&models.User{
+		ID: 1, Role: models.RoleVolunteer, IsActive: true, IsApproved: true,
+	}, nil)
 	d.Repo.On("RevokeRefreshToken", ctx, mock.AnythingOfType("string")).Return(nil)
 	d.Token.On("IssueTokens", ctx, 1, models.RoleVolunteer, true).Return("na", "nr", nil)
 	d.Repo.On("SaveRefreshToken", ctx, 1, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time")).Return(nil)
@@ -97,6 +101,25 @@ func TestService_RefreshTokens(t *testing.T) {
 	tok, err := svc.RefreshTokens(ctx, rt)
 	require.NoError(t, err)
 	require.Equal(t, "na", tok.AccessToken)
+}
+
+func TestService_RefreshTokens_inactive_user(t *testing.T) {
+	ctx := context.Background()
+	svc, d := newTestService(t)
+	rt := "refresh-raw"
+	d.Token.On("VerifyToken", ctx, rt).Return(&models.CustomClaims{UserID: 1, Role: models.RoleVolunteer, IsApproved: true}, nil)
+	d.Repo.On("GetRefreshToken", ctx, mock.AnythingOfType("string")).Return(&models.RefreshToken{
+		UserID: 1, IsRevoked: false, ExpiresAt: time.Now().Add(time.Hour),
+	}, nil)
+	// A deactivated user must not be able to refresh; all their tokens are revoked.
+	d.Repo.On("GetUserByID", ctx, 1).Return(&models.User{ID: 1, IsActive: false}, nil)
+	d.Repo.On("RevokeAllUserRefreshTokens", ctx, 1).Return(nil)
+
+	tok, err := svc.RefreshTokens(ctx, rt)
+	require.Error(t, err)
+	require.Nil(t, tok)
+	var ua myerrors.UnauthorizedErr
+	require.ErrorAs(t, err, &ua)
 }
 
 func TestService_Login_inactive_user(t *testing.T) {

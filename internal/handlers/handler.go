@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"runtime/debug"
 
 	"shb/internal/configs"
 	"shb/internal/models"
@@ -14,6 +15,7 @@ import (
 	"shb/internal/services"
 	"shb/pkg/constants"
 	"shb/pkg/external/sms/smsProvider"
+	"shb/pkg/metrics"
 	"shb/pkg/middlewares"
 	"shb/pkg/myerrors"
 
@@ -23,6 +25,8 @@ import (
 	"github.com/rs/zerolog"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/oauth2"
 )
 
@@ -39,6 +43,10 @@ type IService interface {
 	Login(ctx context.Context, phone, password string) (*models.TokenResponse, error)
 	Register(ctx context.Context, email, phone, password, fullName, role string, institutionID *int) (*models.TokenResponse, error)
 	GetUserByID(ctx context.Context, id int) (*models.User, error)
+	UpdateProfile(ctx context.Context, userID int, fullName, phone *string) (*models.User, error)
+
+	// HealthCheck verifies downstream dependencies for the readiness probe.
+	HealthCheck(ctx context.Context) error
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	CreateUser(ctx context.Context, user *models.User) error
 	LoginOAuth(ctx context.Context, oauthUserInfo models.OAuthUserInfo) (*models.TokenResponse, error)
@@ -106,6 +114,23 @@ type OAuthProvider interface {
 
 // Handler holds all dependencies for the HTTP handler layer.
 type Handler struct {
+	service    IService
+	limiter    Limiter
+	middleware *middlewares.Middleware
+	metrics    *metrics.Metrics
+	logger     *zerolog.Logger
+	cfg        *configs.Config
+}
+
+// NewHandler constructs a Handler with all required dependencies injected.
+func NewHandler(service IService, limiter Limiter, middleware *middlewares.Middleware, m *metrics.Metrics, logger *zerolog.Logger, cfg *configs.Config) *Handler {
+	return &Handler{
+		service:    service,
+		limiter:    limiter,
+		middleware: middleware,
+		metrics:    m,
+		logger:     logger,
+		cfg:        cfg,
 	service        IService
 	limiter        Limiter
 	middleware     *middlewares.Middleware
@@ -136,6 +161,26 @@ func NewHandler(
 // InitRoutes registers all application routes and returns the configured Gin engine.
 func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.New()
+	// otelgin runs before RequestID so a root span (and trace_id) already exists
+	// when RequestID builds the per-request logger. It uses the global tracer
+	// provider, a no-op until tracing is enabled, so it costs nothing when off.
+	// The metrics and health endpoints are excluded to avoid trace noise.
+	router.Use(
+		h.CORSMiddleware(),
+		otelgin.Middleware(
+			h.cfg.Tracing.ServiceName,
+			otelgin.WithGinFilter(func(c *gin.Context) bool {
+				p := c.Request.URL.Path
+				return p != metrics.Endpoint() && p != "/healthz" && p != "/readyz" && p != "/ping"
+			}),
+		),
+		h.RequestID(),
+		h.Recovery(),
+	)
+	if h.metrics != nil {
+		router.Use(h.metrics.Middleware())
+		router.GET(metrics.Endpoint(), h.metrics.Handler())
+	}
 	router.Use(h.CORSMiddleware(), gin.RecoveryWithWriter(gin.DefaultWriter), h.RequestID(), middlewares.PrometheusMiddleware())
 	router.Use(h.CORSMiddleware(), gin.RecoveryWithWriter(gin.DefaultWriter), h.RequestID(), h.middleware.AlertMiddleware())
 	router.Use(h.CORSMiddleware(), gin.RecoveryWithWriter(gin.DefaultWriter), h.RequestID(), h.middleware.LoggerMiddleware(), h.middleware.AlertMiddleware())
@@ -143,10 +188,12 @@ func (h *Handler) InitRoutes() *gin.Engine {
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/ping", h.ping)
+	router.GET("/healthz", h.healthz)
+	router.GET("/readyz", h.readyz)
 
 	v1 := router.Group("/api/v1")
 	{
-		if h.cfg.App.Env != "production" {
+		if !h.cfg.App.IsProduction() {
 			v1.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler,
 				ginSwagger.URL("/api/v1/docs/swagger.yaml"),
 			))
@@ -187,6 +234,7 @@ func (h *Handler) InitRoutes() *gin.Engine {
 			h.success(c, "valid")
 		})
 		v1.GET("/me", h.middleware.AuthMiddleware(), h.getMe)
+		v1.PATCH("/me", h.middleware.AuthMiddleware(), h.updateProfile)
 		userHandler := NewUserHandler(h.service.(*services.Service))
 		v1.PATCH("/me", h.middleware.AuthMiddleware(), userHandler.UpdateProfile)
 		v1.GET("/stats", h.getStats)
@@ -264,6 +312,24 @@ func (h *Handler) ping(context *gin.Context) {
 	h.respond(context, "pong", http.StatusOK)
 }
 
+// healthz is a liveness probe: it reports that the process is up and serving,
+// without touching any downstream dependency.
+func (h *Handler) healthz(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+// readyz is a readiness probe: it verifies that critical dependencies
+// (database, cache) are reachable, returning 503 otherwise so the orchestrator
+// stops routing traffic to an instance that cannot serve requests.
+func (h *Handler) readyz(c *gin.Context) {
+	if err := h.service.HealthCheck(c.Request.Context()); err != nil {
+		zerolog.Ctx(c.Request.Context()).Warn().Err(err).Msg("readiness check failed")
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unavailable"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ready"})
+}
+
 func (h *Handler) noRoute(context *gin.Context) {
 	h.respond(context, "this route is not supported", http.StatusNotFound)
 }
@@ -320,6 +386,35 @@ func (h *Handler) handleError(c *gin.Context, err error) {
 	c.Abort()
 }
 
+// Recovery is a middleware that recovers from any panic in the request chain,
+// records it (structured log with request context + a Prometheus counter), and
+// returns a clean 500 response instead of crashing the connection.
+//
+// It deliberately replaces gin's default recovery so panics are observable
+// (metric + correlated log) rather than only written to stderr.
+func (h *Handler) Recovery() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if r := recover(); r != nil {
+				h.metrics.IncPanic()
+				zerolog.Ctx(c.Request.Context()).Error().
+					Interface("panic", r).
+					Str("path", c.FullPath()).
+					Str("method", c.Request.Method).
+					Bytes("stack", debug.Stack()).
+					Msg("recovered from panic")
+
+				if !c.Writer.Written() {
+					c.AbortWithStatusJSON(http.StatusInternalServerError, myerrors.InternalError())
+				} else {
+					c.Abort()
+				}
+			}
+		}()
+		c.Next()
+	}
+}
+
 // RequestID is a middleware that ensures every request carries a unique
 // request ID header and propagates it through the request context.
 func (h *Handler) RequestID() gin.HandlerFunc {
@@ -330,7 +425,17 @@ func (h *Handler) RequestID() gin.HandlerFunc {
 		}
 		ctx := c.Request.Context()
 		ctx = context.WithValue(ctx, constants.RequestIDKey, requestID)
-		log := h.logger.With().Str("request_id", requestID).Logger()
+
+		logCtx := h.logger.With().Str("request_id", requestID)
+		// Correlate logs with traces: when a sampled span is active, stamp its
+		// trace_id/span_id on every log line so Grafana can pivot log → trace.
+		if sc := trace.SpanContextFromContext(ctx); sc.HasTraceID() {
+			logCtx = logCtx.
+				Str("trace_id", sc.TraceID().String()).
+				Str("span_id", sc.SpanID().String())
+		}
+		log := logCtx.Logger()
+
 		ctx = log.WithContext(ctx)
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()

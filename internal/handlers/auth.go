@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 
 	"shb/internal/models"
@@ -48,7 +47,7 @@ func (h *Handler) resetTokenCookies(c *gin.Context) {
 func (h *Handler) setTokenCookies(c *gin.Context, tokens *models.TokenResponse) {
 	accessMaxAge := int(h.cfg.Security.AccessTokenTTL.Seconds())
 	refreshMaxAge := int(h.cfg.Security.RefreshTokenTTL.Seconds())
-	isProduction := h.cfg.App.Env == "production"
+	isProduction := h.cfg.App.IsProduction()
 
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     "access_token",
@@ -237,6 +236,8 @@ func (h *Handler) register(c *gin.Context) {
 	ctx = log.WithContext(ctx)
 	c.Request = c.Request.WithContext(ctx)
 
+	// Apply rate limiting only in non-local environments.
+	if !h.cfg.App.IsLocal() {
 	isLocal := os.Getenv("APP_ENV") == "development" ||
 		os.Getenv("APP_ENV") == "local"
 
@@ -400,8 +401,7 @@ func (h *Handler) login(c *gin.Context) {
 	}
 
 	// Apply rate limiting only in non-local environments.
-	isLocal := os.Getenv("APP_ENV") == "development" || os.Getenv("APP_ENV") == "local"
-	if !isLocal {
+	if !h.cfg.App.IsLocal() {
 		// Rate limit login — max 5 attempts per 15 minutes per email.
 		loginKey := fmt.Sprintf("login:%s", in.Email)
 		allowed, err := h.limiter.Allow(ctx, loginKey, 5, 15) // 15 min.
@@ -432,8 +432,7 @@ func (h *Handler) refreshTokens(c *gin.Context) {
 	logger := h.logger.With().Ctx(ctx).Str("handler", "refreshTokens").Logger()
 
 	// Apply rate limiting only in non-local environments.
-	isLocal := os.Getenv("APP_ENV") == "development" || os.Getenv("APP_ENV") == "local"
-	if !isLocal {
+	if !h.cfg.App.IsLocal() {
 		// Use IP for refresh limiting to prevent endpoint hammering.
 		ipKey := fmt.Sprintf("refresh_ip:%s", c.ClientIP())
 		allowed, err := h.limiter.Allow(ctx, ipKey, 10, 1) // Max 10 refreshes per minute per IP.
@@ -480,6 +479,26 @@ func (h *Handler) logout(c *gin.Context) {
 		}
 	}
 
+	isProduction := h.cfg.App.IsProduction()
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
 	h.resetTokenCookies(c)
 
 	log.Debug().Msg("user logged out")
@@ -506,6 +525,32 @@ func (h *Handler) getMe(c *gin.Context) {
 	h.success(c, user)
 }
 
+func (h *Handler) updateProfile(c *gin.Context) {
+	userID, abort := h.mustGetUserID(c)
+	if abort {
+		return
+	}
+
+	in := struct {
+		FullName *string `json:"full_name"`
+		Phone    *string `json:"phone"`
+	}{}
+
+	if err := c.ShouldBindJSON(&in); err != nil {
+		h.handleError(c, myerrors.NewBadRequestErr("invalid input parameters"))
+		return
+	}
+
+	user, err := h.service.UpdateProfile(c.Request.Context(), userID, in.FullName, in.Phone)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	// Clear the password hash before sending the response.
+	user.Password = nil
+
+	h.success(c, user)
 // oauth handles the start of server-side OAuth authentication, by redirecting
 // user to OAuth provider's consent page.
 func (h *Handler) oauth(cfg *oauth2.Config) gin.HandlerFunc {

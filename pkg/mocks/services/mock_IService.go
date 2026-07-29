@@ -1661,6 +1661,52 @@ func (_c *MockIService_GetVacancyByID_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// HealthCheck provides a mock function with given fields: ctx
+func (_m *MockIService) HealthCheck(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HealthCheck")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIService_HealthCheck_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HealthCheck'
+type MockIService_HealthCheck_Call struct {
+	*mock.Call
+}
+
+// HealthCheck is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockIService_Expecter) HealthCheck(ctx interface{}) *MockIService_HealthCheck_Call {
+	return &MockIService_HealthCheck_Call{Call: _e.mock.On("HealthCheck", ctx)}
+}
+
+func (_c *MockIService_HealthCheck_Call) Run(run func(ctx context.Context)) *MockIService_HealthCheck_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockIService_HealthCheck_Call) Return(_a0 error) *MockIService_HealthCheck_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIService_HealthCheck_Call) RunAndReturn(run func(context.Context) error) *MockIService_HealthCheck_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // JoinEvent provides a mock function with given fields: ctx, eventID, userID
 func (_m *MockIService) JoinEvent(ctx context.Context, eventID int, userID int) error {
 	ret := _m.Called(ctx, eventID, userID)
@@ -2294,6 +2340,12 @@ func (_c *MockIService_UpdateNeed_Call) RunAndReturn(run func(context.Context, *
 	return _c
 }
 
+// UpdateProfile provides a mock function with given fields: ctx, userID, fullName, phone
+func (_m *MockIService) UpdateProfile(ctx context.Context, userID int, fullName *string, phone *string) (*models.User, error) {
+	ret := _m.Called(ctx, userID, fullName, phone)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateProfile")
 // UpdateUserOAuthInfoByEmail provides a mock function with given fields: ctx, info
 func (_m *MockIService) UpdateUserOAuthInfoByEmail(ctx context.Context, info models.OAuthUserInfo) (*models.User, error) {
 	ret := _m.Called(ctx, info)
@@ -2304,6 +2356,11 @@ func (_m *MockIService) UpdateUserOAuthInfoByEmail(ctx context.Context, info mod
 
 	var r0 *models.User
 	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, *string, *string) (*models.User, error)); ok {
+		return rf(ctx, userID, fullName, phone)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int, *string, *string) *models.User); ok {
+		r0 = rf(ctx, userID, fullName, phone)
 	if rf, ok := ret.Get(0).(func(context.Context, models.OAuthUserInfo) (*models.User, error)); ok {
 		return rf(ctx, info)
 	}
@@ -2315,6 +2372,8 @@ func (_m *MockIService) UpdateUserOAuthInfoByEmail(ctx context.Context, info mod
 		}
 	}
 
+	if rf, ok := ret.Get(1).(func(context.Context, int, *string, *string) error); ok {
+		r1 = rf(ctx, userID, fullName, phone)
 	if rf, ok := ret.Get(1).(func(context.Context, models.OAuthUserInfo) error); ok {
 		r1 = rf(ctx, info)
 	} else {
@@ -2324,6 +2383,23 @@ func (_m *MockIService) UpdateUserOAuthInfoByEmail(ctx context.Context, info mod
 	return r0, r1
 }
 
+// MockIService_UpdateProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateProfile'
+type MockIService_UpdateProfile_Call struct {
+	*mock.Call
+}
+
+// UpdateProfile is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int
+//   - fullName *string
+//   - phone *string
+func (_e *MockIService_Expecter) UpdateProfile(ctx interface{}, userID interface{}, fullName interface{}, phone interface{}) *MockIService_UpdateProfile_Call {
+	return &MockIService_UpdateProfile_Call{Call: _e.mock.On("UpdateProfile", ctx, userID, fullName, phone)}
+}
+
+func (_c *MockIService_UpdateProfile_Call) Run(run func(ctx context.Context, userID int, fullName *string, phone *string)) *MockIService_UpdateProfile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].(*string), args[3].(*string))
 // MockIService_UpdateUserOAuthInfoByEmail_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateUserOAuthInfoByEmail'
 type MockIService_UpdateUserOAuthInfoByEmail_Call struct {
 	*mock.Call
@@ -2343,11 +2419,13 @@ func (_c *MockIService_UpdateUserOAuthInfoByEmail_Call) Run(run func(ctx context
 	return _c
 }
 
+func (_c *MockIService_UpdateProfile_Call) Return(_a0 *models.User, _a1 error) *MockIService_UpdateProfile_Call {
 func (_c *MockIService_UpdateUserOAuthInfoByEmail_Call) Return(_a0 *models.User, _a1 error) *MockIService_UpdateUserOAuthInfoByEmail_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
+func (_c *MockIService_UpdateProfile_Call) RunAndReturn(run func(context.Context, int, *string, *string) (*models.User, error)) *MockIService_UpdateProfile_Call {
 func (_c *MockIService_UpdateUserOAuthInfoByEmail_Call) RunAndReturn(run func(context.Context, models.OAuthUserInfo) (*models.User, error)) *MockIService_UpdateUserOAuthInfoByEmail_Call {
 	_c.Call.Return(run)
 	return _c

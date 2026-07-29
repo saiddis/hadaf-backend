@@ -1,0 +1,28 @@
+# Prometheus scrape configuration for the Hadaf backend.
+#
+# Prometheus pulls metrics from the app's /metrics endpoint (exposition format
+# served by pkg/metrics). The app is reached by its docker-compose service name
+# on the shared default network.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    service: shb-backend
+
+rule_files:
+  - "alerts.yml"
+
+scrape_configs:
+  # The application itself.
+  - job_name: "shb-app"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["app:8000"]
+        labels:
+          service: shb-backend
+
+  # Prometheus self-monitoring.
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
