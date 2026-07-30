@@ -114,11 +114,7 @@ func (h *Handler) donate(c *gin.Context) {
 	ctx = log.WithContext(ctx)
 	c.Request = c.Request.WithContext(ctx)
 
-	receipt, err := h.service.ProcessDonation(ctx, models.DonationRequest{
-		CampaignID:  campaignID,
-		Amount:      input.Amount,
-		DonorUserID: userID,
-	})
+	receipt, err := h.service.ProcessDonation(ctx, campaignID, input.Amount, &userID)
 	if err != nil {
 		h.handleError(c, err)
 		return

@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -168,7 +167,6 @@ func buildRouter(t *testing.T, pool *pgxpool.Pool) http.Handler {
 
 	logger := zerolog.New(io.Discard)
 	repo := repositories.NewRepository(pool, &logger)
-	campaignLedgerRepo := repositories.NewCampaignLedgerRepository(pool, slog.Default())
 
 	secret := "integration-test-secret"
 
@@ -184,8 +182,6 @@ func buildRouter(t *testing.T, pool *pgxpool.Pool) http.Handler {
 		svcCfg,
 		&logger,
 		repo,
-		campaignLedgerRepo,
-		campaignLedgerRepo,
 		nil,
 		smsNoop{},
 		jwtToken.NewJwtTokenIssuer(secret, 15*time.Minute, 720*time.Hour),

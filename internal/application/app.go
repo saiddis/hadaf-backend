@@ -5,7 +5,6 @@ package application
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -130,16 +129,12 @@ func NewApplication() *App {
 
 	repository := repositories.NewRepository(postgresConn, &log.Logger)
 
-	compaignLedgerRepository := repositories.NewCampaignLedgerRepository(postgresConn, slog.Default())
-
 	// Service uses Internal Config (ServiceConfig)
 	// We pass emailAdapter here as it was required by Service constructor
 	service := services.NewService(
 		&cfg.Service,
 		&log.Logger,
 		repository,
-		compaignLedgerRepository,
-		compaignLedgerRepository,
 		redis,
 		sms,
 		token,

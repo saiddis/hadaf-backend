@@ -2112,9 +2112,9 @@ func (_c *MockIService_LoginOAuth_Call) RunAndReturn(run func(context.Context, m
 	return _c
 }
 
-// ProcessDonation provides a mock function with given fields: ctx, donation
-func (_m *MockIService) ProcessDonation(ctx context.Context, donation models.DonationRequest) (*models.LedgerEntry, error) {
-	ret := _m.Called(ctx, donation)
+// ProcessDonation provides a mock function with given fields: ctx, campaignID, amount, donorID
+func (_m *MockIService) ProcessDonation(ctx context.Context, campaignID int, amount float64, donorID *int) (*models.LedgerEntry, error) {
+	ret := _m.Called(ctx, campaignID, amount, donorID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ProcessDonation")
@@ -2122,19 +2122,19 @@ func (_m *MockIService) ProcessDonation(ctx context.Context, donation models.Don
 
 	var r0 *models.LedgerEntry
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, models.DonationRequest) (*models.LedgerEntry, error)); ok {
-		return rf(ctx, donation)
+	if rf, ok := ret.Get(0).(func(context.Context, int, float64, *int) (*models.LedgerEntry, error)); ok {
+		return rf(ctx, campaignID, amount, donorID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, models.DonationRequest) *models.LedgerEntry); ok {
-		r0 = rf(ctx, donation)
+	if rf, ok := ret.Get(0).(func(context.Context, int, float64, *int) *models.LedgerEntry); ok {
+		r0 = rf(ctx, campaignID, amount, donorID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.LedgerEntry)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, models.DonationRequest) error); ok {
-		r1 = rf(ctx, donation)
+	if rf, ok := ret.Get(1).(func(context.Context, int, float64, *int) error); ok {
+		r1 = rf(ctx, campaignID, amount, donorID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -2149,14 +2149,16 @@ type MockIService_ProcessDonation_Call struct {
 
 // ProcessDonation is a helper method to define mock.On call
 //   - ctx context.Context
-//   - donation models.DonationRequest
-func (_e *MockIService_Expecter) ProcessDonation(ctx interface{}, donation interface{}) *MockIService_ProcessDonation_Call {
-	return &MockIService_ProcessDonation_Call{Call: _e.mock.On("ProcessDonation", ctx, donation)}
+//   - campaignID int
+//   - amount float64
+//   - donorID *int
+func (_e *MockIService_Expecter) ProcessDonation(ctx interface{}, campaignID interface{}, amount interface{}, donorID interface{}) *MockIService_ProcessDonation_Call {
+	return &MockIService_ProcessDonation_Call{Call: _e.mock.On("ProcessDonation", ctx, campaignID, amount, donorID)}
 }
 
-func (_c *MockIService_ProcessDonation_Call) Run(run func(ctx context.Context, donation models.DonationRequest)) *MockIService_ProcessDonation_Call {
+func (_c *MockIService_ProcessDonation_Call) Run(run func(ctx context.Context, campaignID int, amount float64, donorID *int)) *MockIService_ProcessDonation_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(models.DonationRequest))
+		run(args[0].(context.Context), args[1].(int), args[2].(float64), args[3].(*int))
 	})
 	return _c
 }
@@ -2166,7 +2168,7 @@ func (_c *MockIService_ProcessDonation_Call) Return(_a0 *models.LedgerEntry, _a1
 	return _c
 }
 
-func (_c *MockIService_ProcessDonation_Call) RunAndReturn(run func(context.Context, models.DonationRequest) (*models.LedgerEntry, error)) *MockIService_ProcessDonation_Call {
+func (_c *MockIService_ProcessDonation_Call) RunAndReturn(run func(context.Context, int, float64, *int) (*models.LedgerEntry, error)) *MockIService_ProcessDonation_Call {
 	_c.Call.Return(run)
 	return _c
 }

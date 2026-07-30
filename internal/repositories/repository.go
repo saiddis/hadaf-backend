@@ -5,18 +5,24 @@ package repositories
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 )
 
 type Repository struct {
+	*CampaignLedgerRepository
 	postgres *pgxpool.Pool
 	logger   *zerolog.Logger
 }
 
 func NewRepository(postgresConn *pgxpool.Pool, log *zerolog.Logger) *Repository {
-	return &Repository{postgres: postgresConn, logger: log}
+	return &Repository{
+		CampaignLedgerRepository: NewCampaignLedgerRepository(postgresConn, slog.Default()),
+		postgres:                 postgresConn,
+		logger:                   log,
+	}
 }
 
 func formatLimitOffset(limit, offset int) string {

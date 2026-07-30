@@ -57,8 +57,6 @@ func newTestService(t *testing.T) (*services.Service, testDeps) {
 		testServiceConfig(),
 		&log,
 		d.Repo,
-		d.CampaignRepo,
-		d.LedgerRepo,
 		d.Cache,
 		d.SMS,
 		d.Token,

@@ -10,6 +10,7 @@ const (
 	LedgerTypeOverflowToProvider = "overflow_out"
 	LedgerTypeOverflowToGeneral  = "overflow_in"
 	LedgerTypeRefund             = "refund"
+	LedgerTypePaymentToProvider  = "payment_to_provider"
 )
 
 type LedgerEntry struct {
@@ -25,12 +26,6 @@ type LedgerEntry struct {
 	IsAnonymous  bool      `json:"is_anonymous"`
 	DonorMessage *string   `json:"donor_message"`
 	CreatedAt    time.Time `json:"created_at"`
-}
-
-type DonationRequest struct {
-	CampaignID  int     `json:"-"`
-	Amount      float64 `json:"amount"`
-	DonorUserID int     `json:"-"`
 }
 
 type LedgerEntryPage struct {

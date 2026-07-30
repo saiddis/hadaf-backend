@@ -97,36 +97,33 @@ type IRepository interface {
 	GetRefreshToken(ctx context.Context, tokenHash string) (*models.RefreshToken, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID int) error
-}
 
-type CampaignRepository interface {
+	// --- Campaigns ---
 	CreateCampaign(ctx context.Context, c *models.MedicalCampaign) error
-	GetByID(ctx context.Context, id int) (*models.MedicalCampaign, error)
+	GetCampaignByID(ctx context.Context, id int) (*models.MedicalCampaign, error)
 	GetAllCampaigns(ctx context.Context, q models.CampaignListQuery) (*models.CampaignPage, error)
 	GetCampaignDetails(ctx context.Context, id int) (*models.PublicCampaign, error)
-	UpdateStatus(ctx context.Context, id int, status string) error
-}
+	UpdateCampaignStatus(ctx context.Context, id int, status string) error
 
-type LedgerRepository interface {
+	// --- Donations and payments ---
 	RecordDonation(ctx context.Context, l *models.LedgerEntry) error
 	CreateLedgerEntry(ctx context.Context, l *models.LedgerEntry) error
 	GetTotalDonationsByCampaign(ctx context.Context, campaignID int) (float64, error)
 	GetAllLedgerEntries(ctx context.Context, q models.LedgerEntryListQuery) (*models.LedgerEntryPage, error)
+	CreateCampaignExpenditure(ctx context.Context, c *models.CampaignExpenditure) error
 }
 
 // Service is the application service layer that coordinates business logic
 // across the repository, cache, external adapters, and token provider.
 type Service struct {
-	cfg          *configs.ServiceConfig
-	logger       *zerolog.Logger
-	repo         IRepository
-	campaignRepo CampaignRepository
-	ledgerRepo   LedgerRepository
-	cache        cache.ICache
-	sms          sms.ISmsAdapter
-	token        tokens.ITokenIssuer
-	fs           fs.Storage
-	email        email.IEmailAdapter
+	cfg    *configs.ServiceConfig
+	logger *zerolog.Logger
+	repo   IRepository
+	cache  cache.ICache
+	sms    sms.ISmsAdapter
+	token  tokens.ITokenIssuer
+	fs     fs.Storage
+	email  email.IEmailAdapter
 }
 
 // NewService constructs a Service with all required dependencies injected.
@@ -134,8 +131,6 @@ func NewService(
 	cfg *configs.ServiceConfig,
 	log *zerolog.Logger,
 	repo IRepository,
-	compaignRepo CampaignRepository,
-	ledgerRepo LedgerRepository,
 	cache cache.ICache,
 	sms sms.ISmsAdapter,
 	token tokens.ITokenIssuer,
@@ -143,15 +138,13 @@ func NewService(
 	email email.IEmailAdapter,
 ) *Service {
 	return &Service{
-		cfg:          cfg,
-		logger:       log,
-		repo:         repo,
-		cache:        cache,
-		sms:          sms,
-		email:        email,
-		token:        token,
-		fs:           fs,
-		campaignRepo: compaignRepo,
-		ledgerRepo:   ledgerRepo,
+		cfg:    cfg,
+		logger: log,
+		repo:   repo,
+		cache:  cache,
+		sms:    sms,
+		email:  email,
+		token:  token,
+		fs:     fs,
 	}
 }

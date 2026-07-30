@@ -95,10 +95,10 @@ type IService interface {
 	// UpdateProfile partially updates the user's profile information (full name and/or phone).
 	UpdateProfile(ctx context.Context, userID int, req models.UpdateProfileRequest) error
 
-	// --- Campaings ---
+	// --- Campaings, payments and donations ---
 	GetAllCampaigns(ctx context.Context, q models.CampaignListQuery) (*models.CampaignPage, error)
 	GetCampaignByID(ctx context.Context, id int) (*models.PublicCampaign, error)
-	ProcessDonation(ctx context.Context, donation models.DonationRequest) (*models.LedgerEntry, error)
+	ProcessDonation(ctx context.Context, campaignID int, amount float64, donorID *int) (*models.LedgerEntry, error)
 	GetDonationsByDonorUser(ctx context.Context, userID int) (*models.LedgerEntryPage, error)
 	GetDonationsByCampaign(ctx context.Context, campaignID int) (*models.LedgerEntryPage, error)
 }

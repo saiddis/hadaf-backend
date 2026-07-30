@@ -41,8 +41,6 @@ func Test_checkPermission(t *testing.T) {
 		testCfg(),
 		&log,
 		repo,
-		repomock.NewMockCampaignRepository(t),
-		repomock.NewMockLedgerRepository(t),
 		cachemock.NewMockICache(t),
 		smsmock.NewMockISmsAdapter(t),
 		tokenmock.NewMockITokenIssuer(t),

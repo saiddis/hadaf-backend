@@ -118,11 +118,13 @@ func TestDonateUsesAuthenticatedUser(t *testing.T) {
 	context.Params = gin.Params{{Key: "id", Value: "7"}}
 	context.Set("userID", 12)
 
-	service.On("ProcessDonation", mock.Anything, models.DonationRequest{
-		CampaignID:  7,
-		Amount:      10,
-		DonorUserID: 12,
-	}).Return(&models.LedgerEntry{
+	service.On(
+		"ProcessDonation",
+		mock.Anything,
+		7,
+		10,
+		12,
+	).Return(&models.LedgerEntry{
 		ID:         9,
 		CampaignID: intPtr(7),
 		Amount:     10,
@@ -144,8 +146,6 @@ func newCampaignRouter(t *testing.T) (*gin.Engine, *repomock.MockCampaignReposit
 		&configs.ServiceConfig{},
 		&log,
 		repo,
-		campaignRepo,
-		ledgerRepo,
 		nil,
 		nil,
 		nil,

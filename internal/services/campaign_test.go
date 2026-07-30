@@ -59,11 +59,7 @@ func TestProcessDonationRecordsActiveCampaignDonation(t *testing.T) {
 		Return(nil).
 		Once()
 
-	receipt, err := service.ProcessDonation(ctx, models.DonationRequest{
-		CampaignID:  7,
-		Amount:      25.5,
-		DonorUserID: 12,
-	})
+	receipt, err := service.ProcessDonation(ctx, 7, 25.5, intPtr(12))
 
 	require.NoError(t, err)
 	assert.Equal(t, &models.LedgerEntry{
@@ -86,11 +82,7 @@ func TestProcessDonationRejectsInactiveCampaign(t *testing.T) {
 		Status: models.CampaignStatusCompleted,
 	}, nil).Once()
 
-	_, err := service.ProcessDonation(ctx, models.DonationRequest{
-		CampaignID:  7,
-		Amount:      25,
-		DonorUserID: 12,
-	})
+	_, err := service.ProcessDonation(ctx, 7, 25, intPtr(12))
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "campaign is not active")
