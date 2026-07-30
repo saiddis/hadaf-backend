@@ -86,7 +86,7 @@ func (r *CampaignLedgerRepository) CreateCampaign(ctx context.Context, c *models
 	return nil
 }
 
-func (r *CampaignLedgerRepository) GetByID(ctx context.Context, id int) (*models.MedicalCampaign, error) {
+func (r *CampaignLedgerRepository) GetCampaignByID(ctx context.Context, id int) (*models.MedicalCampaign, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("%w: %d", ErrInvalidCampaignID, id)
 	}
@@ -185,7 +185,7 @@ func (r *CampaignLedgerRepository) GetCampaignDetails(ctx context.Context, id in
 	return &campaign, nil
 }
 
-func (r *CampaignLedgerRepository) UpdateStatus(ctx context.Context, id int, status string) error {
+func (r *CampaignLedgerRepository) UpdateCampaignStatus(ctx context.Context, id int, status string) error {
 	if id <= 0 {
 		return fmt.Errorf("%w: %d", ErrInvalidCampaignID, id)
 	}
@@ -599,4 +599,46 @@ func (r *CampaignLedgerRepository) GetAllLedgerEntries(ctx context.Context, q mo
 		Items:  entries,
 		Total:  totalCount,
 	}, nil
+}
+
+func (r *CampaignLedgerRepository) CreateCampaignExpenditure(ctx context.Context, c *models.CampaignExpenditure) error {
+	if c == nil {
+		return errors.New("campaign expenditure is nil")
+	}
+
+	query := `
+		INSERT INTO campaign_expenditures (
+			campaign_id,
+			provider_id,
+			amount,
+			description,
+			receipt_path,
+			invoice_path,
+			paid_at,
+			created_by,
+			created_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id, created_at
+	`
+
+	err := r.db.QueryRow(
+		ctx,
+		query,
+		c.CampaignID,
+		c.ProviderID,
+		c.Amount,
+		c.Description,
+		c.ReceiptPath,
+		c.InvoicePath,
+		c.PaidAt,
+		c.CreatedBy,
+		c.CreatedAt,
+	).Scan(&c.ID, &c.CreatedAt)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
